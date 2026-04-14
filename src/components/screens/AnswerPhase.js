@@ -1,0 +1,74 @@
+import { useState, useEffect } from "react";
+import { Phone, ScreenTransition, Hdr, TimerBar, Btn } from "../ui";
+
+export default function AnswerPhase({ round, chips, correctAnswer, onSubmit }) {
+  const [answer, setAnswer] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [timer, setTimer] = useState(100);
+
+  useEffect(() => {
+    const iv = setInterval(() => setTimer(t => Math.max(0, t - 1.5)), 200);
+    return () => clearInterval(iv);
+  }, []);
+
+  const handleSubmit = () => {
+    setSubmitted(true);
+    setTimeout(() => onSubmit(answer.trim().toLowerCase() === correctAnswer.toLowerCase()), 1200);
+  };
+
+  return (
+    <Phone>
+      <ScreenTransition type="fade">
+        <Hdr round={round.num} total={15} phase="ANSWER" chips={chips} />
+        <TimerBar pct={timer} color={timer < 30 ? "var(--amb)" : "var(--red)"} />
+
+        <div style={{ flex: 1, padding: "20px 24px", display: "flex", flexDirection: "column" }}>
+          <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeIn 0.3s" }}>
+            <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--txt-d)", letterSpacing: 2, marginBottom: 6 }}>TRADE WINDOW CLOSED</div>
+            <div style={{ fontSize: 14, color: "var(--txt-m)", fontWeight: 300 }}>Submit your answer or pass</div>
+          </div>
+
+          <div style={{ background: "var(--s1)", borderRadius: 14, border: "1px solid var(--bdr)", padding: 16, marginBottom: 16, animation: "fadeUp 0.3s ease-out 0.1s both" }}>
+            <div style={{ fontFamily: "var(--fm)", fontSize: 10, color: "var(--txt-d)", letterSpacing: 2, marginBottom: 10 }}>FRAGMENTS COLLECTED</div>
+            {[round.fragment, round.otherFragments[1]].map((f, i) => (
+              <div key={i} style={{
+                padding: "7px 12px", background: "var(--s2)", borderRadius: 8,
+                fontSize: 13, color: "var(--txt-m)", fontWeight: 300,
+                borderLeft: `2px solid ${i === 0 ? "var(--red)" : "#0EA5E9"}`, marginBottom: 6,
+              }}>"{f}"</div>
+            ))}
+            <div style={{ padding: "7px 12px", background: "var(--s2)", borderRadius: 8, fontSize: 13, color: "var(--txt-d)", fontWeight: 300, borderLeft: "2px solid var(--bdr)", fontStyle: "italic" }}>
+              2 fragments unknown
+            </div>
+          </div>
+
+          <div style={{ animation: "fadeUp 0.3s ease-out 0.2s both" }}>
+            <div style={{ background: "var(--s1)", borderRadius: 14, border: `1.5px solid ${submitted ? "var(--grn)" : "var(--bdr)"}`, padding: "4px", transition: "border-color 0.3s" }}>
+              <input
+                type="text" value={answer} onChange={e => setAnswer(e.target.value)}
+                placeholder="Type your answer..."
+                style={{ width: "100%", background: "transparent", border: "none", padding: "14px 16px", fontSize: 18, fontWeight: 500, color: "var(--txt)", outline: "none", letterSpacing: .5 }}
+              />
+            </div>
+          </div>
+
+          <div style={{ flex: 1 }} />
+
+          <div style={{ display: "flex", gap: 12, animation: "fadeUp 0.4s ease-out 0.3s both" }}>
+            <Btn onClick={() => onSubmit(null)} style={{ flex: 1 }}>Pass</Btn>
+            <Btn
+              primary
+              disabled={!answer.trim() || submitted}
+              onClick={handleSubmit}
+              style={{ flex: 2, background: submitted ? "var(--grn)" : "var(--red)", boxShadow: submitted ? "0 4px 20px var(--grn-g)" : "0 4px 20px var(--red-g)" }}
+            >
+              {submitted ? "✓ Locked In" : "Submit Answer"}
+            </Btn>
+          </div>
+        </div>
+
+        <div style={{ height: 16 }} />
+      </ScreenTransition>
+    </Phone>
+  );
+}
