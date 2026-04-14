@@ -4,12 +4,13 @@ import {
   ReadPhase, TradePhase, AnswerPhase, RoundResult,
   StealSequence, PoisonReveal, Leaderboard,
 } from "./components/screens";
-import { ROUNDS_DATA, PLAYERS_DATA } from "./data/constants";
+import { PLAYERS_DATA } from "./data/constants";
+import { selectRounds } from "./data/questions";
 
 /* ─────────────────────────────────────────────
    FLOW
    Each string is a unique screen key.
-   "join" is only entered via the Join path on Splash.
+   "join" is entered via the Join path on Splash.
 ───────────────────────────────────────────── */
 const FLOW = [
   "splash",
@@ -21,52 +22,80 @@ const FLOW = [
 ];
 
 const SECTIONS = [
-  { label: "Setup",              steps: ["splash","lobby","pack","countdown"] },
-  { label: "Round 1",            steps: ["r1_read","r1_trade","r1_answer","r1_result"] },
-  { label: "Round 2 — Steal",    steps: ["r2_read","r2_trade","r2_steal"] },
-  { label: "Round 3 — Poison",   steps: ["r3_read","r3_trade","r3_answer","r3_poison"] },
-  { label: "Results",            steps: ["leaderboard"] },
+  { label: "Setup",            steps: ["splash","lobby","pack","countdown"] },
+  { label: "Round 1",          steps: ["r1_read","r1_trade","r1_answer","r1_result"] },
+  { label: "Round 2 — Steal",  steps: ["r2_read","r2_trade","r2_steal"] },
+  { label: "Round 3 — Poison", steps: ["r3_read","r3_trade","r3_answer","r3_poison"] },
+  { label: "Results",          steps: ["leaderboard"] },
 ];
 
-export default function App() {
-  const [step, setStep]   = useState(0);
-  const [chips, setChips] = useState(10);
-  const [joinFlow, setJoinFlow] = useState(false); // true when user chose "Join with code"
+// Fallback rounds used before a pack is selected (e.g. navigating via section tabs)
+const DEFAULT_ROUNDS = selectRounds("Mixed");
 
-  const screen  = joinFlow ? "join" : FLOW[step];
-  const next    = () => setStep(s => Math.min(s + 1, FLOW.length - 1));
-  const jumpTo  = (name) => { const idx = FLOW.indexOf(name); if (idx >= 0) setStep(idx); };
-  const restart = () => { setStep(0); setChips(10); setJoinFlow(false); };
+export default function App() {
+  const [step, setStep]       = useState(0);
+  const [chips, setChips]     = useState(10);
+  const [joinFlow, setJoinFlow] = useState(false);
+  const [rounds, setRounds]   = useState(DEFAULT_ROUNDS);
+
+  const screen = joinFlow ? "join" : FLOW[step];
+  const next   = () => setStep(s => Math.min(s + 1, FLOW.length - 1));
+  const jumpTo = (name) => { const idx = FLOW.indexOf(name); if (idx >= 0) setStep(idx); };
+
+  const restart = () => {
+    setStep(0);
+    setChips(10);
+    setJoinFlow(false);
+    setRounds(selectRounds("Mixed")); // fresh shuffle on restart
+  };
+
+  // Called by PackSelect with the chosen pack name
+  const handlePackSelect = (pack) => {
+    setRounds(selectRounds(pack));
+    next();
+  };
 
   const renderScreen = () => {
+    const [r1, r2, r3] = rounds;
+
     switch (screen) {
       case "splash":    return <Splash onNext={next} onJoin={() => setJoinFlow(true)} />;
       case "join":      return <JoinGame onJoin={() => { setJoinFlow(false); jumpTo("lobby"); }} onBack={() => setJoinFlow(false)} />;
       case "lobby":     return <Lobby onNext={next} />;
-      case "pack":      return <PackSelect onNext={next} />;
+      case "pack":      return <PackSelect onNext={handlePackSelect} />;
       case "countdown": return <Countdown onNext={next} />;
 
-      case "r1_read":   return <ReadPhase round={ROUNDS_DATA[0]} chips={chips} onNext={next} />;
-      case "r1_trade":  return <TradePhase round={ROUNDS_DATA[0]} chips={chips} showIncoming onAnswer={next} onSteal={() => jumpTo("r1_answer")} />;
+      // ── Round 1: normal ──
+      case "r1_read":   return <ReadPhase round={r1} chips={chips} onNext={next} />;
+      case "r1_trade":  return <TradePhase round={r1} chips={chips} showIncoming onAnswer={next} onSteal={() => jumpTo("r1_answer")} />;
       case "r1_answer": return (
-        <AnswerPhase round={ROUNDS_DATA[0]} chips={chips} correctAnswer="Pluto"
-          onSubmit={(correct) => { if (correct) setChips(c => c + 5); else if (correct === false) setChips(c => c - 2); next(); }}
+        <AnswerPhase round={r1} chips={chips} correctAnswer={r1.answer}
+          onSubmit={(correct) => {
+            if (correct)             setChips(c => c + 5);
+            else if (correct === false) setChips(c => c - 2);
+            next();
+          }}
         />
       );
-      case "r1_result": return <RoundResult round={ROUNDS_DATA[0]} correct chips={chips} chipDelta={5} onNext={next} />;
+      case "r1_result": return <RoundResult round={r1} correct chips={chips} chipDelta={5} onNext={next} />;
 
-      case "r2_read":   return <ReadPhase round={ROUNDS_DATA[1]} chips={chips} onNext={next} />;
-      case "r2_trade":  return <TradePhase round={ROUNDS_DATA[1]} chips={chips} onAnswer={next} onSteal={next} />;
-      case "r2_steal":  return <StealSequence round={ROUNDS_DATA[1]} stealer={PLAYERS_DATA[2]} onNext={() => { setChips(c => c - 1); next(); }} />;
+      // ── Round 2: steal ──
+      case "r2_read":  return <ReadPhase round={r2} chips={chips} onNext={next} />;
+      case "r2_trade": return <TradePhase round={r2} chips={chips} onAnswer={next} onSteal={next} />;
+      case "r2_steal": return <StealSequence round={r2} stealer={PLAYERS_DATA[2]} onNext={() => { setChips(c => c - 1); next(); }} />;
 
-      case "r3_read":   return <ReadPhase round={ROUNDS_DATA[2]} chips={chips} onNext={next} />;
-      case "r3_trade":  return <TradePhase round={ROUNDS_DATA[2]} chips={chips} onAnswer={next} onSteal={() => jumpTo("r3_answer")} />;
+      // ── Round 3: poison ──
+      case "r3_read":   return <ReadPhase round={r3} chips={chips} onNext={next} />;
+      case "r3_trade":  return <TradePhase round={r3} chips={chips} onAnswer={next} onSteal={() => jumpTo("r3_answer")} />;
       case "r3_answer": return (
-        <AnswerPhase round={ROUNDS_DATA[2]} chips={chips} correctAnswer="Taylor Swift"
-          onSubmit={(correct) => { if (correct === false) setChips(c => c - 2); next(); }}
+        <AnswerPhase round={r3} chips={chips} correctAnswer={r3.answer}
+          onSubmit={(correct) => {
+            if (correct === false) setChips(c => c - 2);
+            next();
+          }}
         />
       );
-      case "r3_poison": return <PoisonReveal round={ROUNDS_DATA[2]} chips={chips} onNext={next} />;
+      case "r3_poison": return <PoisonReveal round={r3} chips={chips} onNext={next} />;
 
       case "leaderboard": return <Leaderboard onRestart={restart} />;
       default:            return <Splash onNext={next} onJoin={() => setJoinFlow(true)} />;
