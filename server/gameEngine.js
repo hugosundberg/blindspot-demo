@@ -186,11 +186,25 @@ function distributeFragments(question, socketIds) {
 }
 
 /**
- * Validate a submitted answer against the canonical answer (case-insensitive, trimmed).
+ * Normalise an answer string for comparison:
+ * lowercase, strip a leading article (the/a/an), collapse whitespace.
+ */
+function normalizeAnswer(str) {
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/^(the|a|an)\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Validate a submitted answer against the canonical answer.
+ * Case-insensitive and tolerates leading articles ("the moon" == "Moon").
  */
 function validateAnswer(submitted, canonical) {
   if (!submitted || typeof submitted !== "string") return false;
-  return submitted.trim().toLowerCase() === canonical.trim().toLowerCase();
+  return normalizeAnswer(submitted) === normalizeAnswer(canonical);
 }
 
-module.exports = { selectRounds, distributeFragments, validateAnswer, QUESTIONS };
+module.exports = { selectRounds, distributeFragments, validateAnswer, normalizeAnswer, QUESTIONS };
