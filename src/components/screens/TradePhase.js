@@ -6,8 +6,9 @@ export default function TradePhase({
   round, chips, players = [], mySocketId,
   collectedFragments = [],
   incomingOffers = [],
+  tradeVotes = { votes: 0, total: 0 },
   onSendOffer, onAcceptOffer, onRejectOffer,
-  onSteal,
+  onSteal, onVoteEnd,
 }) {
   const { state } = useGame();
   const [selectedPlayer, setSelectedPlayer] = useState(null);
@@ -16,6 +17,7 @@ export default function TradePhase({
   const [offerSent, setOfferSent] = useState(false);
   const [activity, setActivity] = useState([]);
   const [timer, setTimer] = useState(100);
+  const [myVote, setMyVote] = useState(false);
 
   // Trade window countdown (visual only — server is authoritative)
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function TradePhase({
 
   // Dismiss offer panel when a steal is triggered
   const stealActive = !!state.stealState;
+  const hasTraded   = state.hasTraded;
 
   const otherPlayers = players.filter(p => p.socketId !== mySocketId);
 
@@ -127,10 +130,24 @@ export default function TradePhase({
         </div>
 
         {/* Bottom actions */}
-        <div style={{ padding: "8px 24px 28px", display: "flex", gap: 10 }}>
-          <Btn danger onClick={onSteal} disabled={stealActive} style={{ flex: 1, animation: stealActive ? "none" : "borderGlow 2s ease-in-out infinite", background: "transparent", border: `2px solid ${stealActive ? "var(--bdr)" : "var(--red)"}`, color: stealActive ? "var(--txt-d)" : "var(--red)" }}>
-            ⚡ STEAL
-          </Btn>
+        <div style={{ padding: "8px 24px 28px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Btn danger onClick={onSteal} disabled={stealActive || hasTraded} style={{ flex: 1, animation: (stealActive || hasTraded) ? "none" : "borderGlow 2s ease-in-out infinite", background: "transparent", border: `2px solid ${(stealActive || hasTraded) ? "var(--bdr)" : "var(--red)"}`, color: (stealActive || hasTraded) ? "var(--txt-d)" : "var(--red)" }}>
+              ⚡ STEAL
+            </Btn>
+            <Btn
+              onClick={() => { if (!myVote && !stealActive) { setMyVote(true); if (onVoteEnd) onVoteEnd(); } }}
+              disabled={myVote || stealActive}
+              style={{ flex: 1, background: myVote ? "rgba(14,165,233,0.08)" : "transparent", border: `2px solid ${myVote ? "#0EA5E9" : "var(--bdr)"}`, color: myVote ? "#0EA5E9" : "var(--txt-d)" }}
+            >
+              {myVote ? `✓ ${tradeVotes.votes}/${tradeVotes.total}` : "Done Trading"}
+            </Btn>
+          </div>
+          {tradeVotes.votes > 0 && (
+            <div style={{ fontFamily: "var(--fm)", fontSize: 10, color: "var(--txt-d)", letterSpacing: 2, textAlign: "center" }}>
+              {tradeVotes.votes}/{tradeVotes.total} READY TO ANSWER
+            </div>
+          )}
         </div>
 
         {/* Incoming trade modal */}

@@ -1,7 +1,7 @@
 module.exports = {
   PORT: process.env.PORT || 4001,
   STEAL_DURATION_MS: 15_000,
-  TRADE_DURATION_MS: 90_000,
+  TRADE_DURATION_MS: 60_000,
   READ_FORCE_ADVANCE_MS: 30_000,   // host's forced-advance if not all players ready
   ANSWER_DURATION_MS: 60_000,
   STARTING_CHIPS: 10,

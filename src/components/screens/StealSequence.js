@@ -15,7 +15,7 @@ export default function StealSequence({ round, stealState, mySocketId, players =
   const stealer     = stealState?.stealerPlayer || players.find(p => p.socketId === stealState?.stealerSocketId);
   const result      = stealState?.result;        // set when STEAL_RESULT / STEAL_TIMEOUT arrives
 
-  const [phase, setPhase]               = useState("flash");
+  const [phase, setPhase]               = useState(() => stealState?.result ? "result" : "flash");
   const [stealAnswer, setStealAnswer]   = useState("");
   const [submitted, setSubmitted]       = useState(false);
   const [stealTimer, setStealTimer]     = useState(15);

@@ -15,6 +15,15 @@ function registerStealHandlers(io, socket) {
       return socket.emit("ROOM_ERROR", { code: "STEAL_ACTIVE", message: "A steal is already in progress." });
     }
 
+    // Prevent stealing after participating in a trade
+    const hasTraded = [...room.tradeOffers.values()].some(offer =>
+      offer.status === "accepted" &&
+      (offer.fromSocketId === socket.id || offer.toSocketId === socket.id)
+    );
+    if (hasTraded) {
+      return socket.emit("ROOM_ERROR", { code: "ALREADY_TRADED", message: "You cannot steal after trading." });
+    }
+
     // Freeze trades
     expirePendingOffers(io, room);
     clearPhaseTimer(room);

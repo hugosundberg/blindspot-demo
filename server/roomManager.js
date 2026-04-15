@@ -28,6 +28,7 @@ function createRoom(hostSocketId, hostPlayer) {
     phaseTimer: null,
     answerBuffer: new Map(),   // socketId → { answer, submittedAt }
     tradeOffers: new Map(),    // offerId → TradeOffer
+    endTradeVotes: new Set(),  // socketIds that have voted to end trade early
     players: new Map(),        // socketId → Player
   };
   room.players.set(hostSocketId, { ...hostPlayer, isHost: true });

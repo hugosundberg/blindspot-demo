@@ -27,6 +27,24 @@ function registerReadHandlers(io, socket) {
       startTradePhase(io, room);
     }
   });
+
+  socket.on("VOTE_END_TRADE", () => {
+    const room = rm.getRoomBySocket(socket.id);
+    if (!room || room.phase !== "trade") return;
+    if (room.stealState) return; // votes are frozen during a steal
+
+    room.endTradeVotes.add(socket.id);
+
+    io.to(room.code).emit("TRADE_VOTE_UPDATE", {
+      votes: room.endTradeVotes.size,
+      total: room.players.size,
+    });
+
+    if (room.endTradeVotes.size >= room.players.size) {
+      clearPhaseTimer(room);
+      endTradePhase(io, room);
+    }
+  });
 }
 
 /** Called from lobbyHandlers and answerHandlers (next round). */
@@ -41,6 +59,7 @@ function startRound(io, room) {
   room.currentRound = question;
   room.answerBuffer = new Map();
   room.tradeOffers = new Map();
+  room.endTradeVotes = new Set();
   room.stealState = null;
 
   // Reset per-round player state

@@ -32,6 +32,8 @@ const initialState = {
   // Trade state
   tradeOffers: [],     // incoming offers: { offerId, fromPlayer, chipAmount }
   tradeActivity: [],   // log entries: { text, detail, timestamp }
+  hasTraded: false,    // true once this player is party to any accepted trade this round
+  tradeVotes: { votes: 0, total: 0 }, // players who have voted to end trade early
 
   // Steal state
   stealState: null,    // { stealerSocketId, stealerPlayer, durationMs } | null
@@ -86,6 +88,8 @@ function reducer(state, action) {
         lastResult: null,
         tradeActivity: [],
         tradeOffers: [],
+        hasTraded: false,
+        tradeVotes: { votes: 0, total: 0 },
         myChips: state.myChips, // keep current chips
       };
 
@@ -93,7 +97,10 @@ function reducer(state, action) {
       return { ...state, players: action.players };
 
     case "TRADE_PHASE_START":
-      return { ...state, phase: "trade" };
+      return { ...state, phase: "trade", tradeVotes: { votes: 0, total: 0 } };
+
+    case "TRADE_VOTE_UPDATE":
+      return { ...state, tradeVotes: { votes: action.votes, total: action.total } };
 
     case "OFFER_RECEIVED":
       return { ...state, tradeOffers: [...state.tradeOffers, action] };
@@ -103,7 +110,7 @@ function reducer(state, action) {
       const frags = action.fragment
         ? [...state.collectedFragments, { fragment: action.fragment, isOwn: false }]
         : state.collectedFragments;
-      return { ...state, tradeOffers: newOffers, collectedFragments: frags };
+      return { ...state, tradeOffers: newOffers, collectedFragments: frags, hasTraded: true };
     }
 
     case "OFFER_REJECTED":
@@ -152,6 +159,9 @@ function reducer(state, action) {
 
     case "LEADERBOARD":
       return { ...state, phase: "leaderboard", leaderboard: action };
+
+    case "CLIENT_PHASE":
+      return { ...state, phase: action.phase };
 
     case "RESET":
       return { ...initialState };

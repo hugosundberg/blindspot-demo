@@ -35,8 +35,9 @@ function AppController() {
 
       on("ROUND_START",    (data)   => { dispatch({ type: "ROUND_START",    ...data }); }),
       on("PLAYERS_STATUS", (data)   => dispatch({ type: "PLAYERS_STATUS",  ...data })),
-      on("TRADE_PHASE_START", (d)  => dispatch({ type: "TRADE_PHASE_START", ...d })),
-      on("TRADE_PHASE_END",   ()   => dispatch({ type: "TRADE_PHASE_END" })),
+      on("TRADE_PHASE_START",  (d) => dispatch({ type: "TRADE_PHASE_START",  ...d })),
+      on("TRADE_PHASE_END",   ()  => dispatch({ type: "TRADE_PHASE_END" })),
+      on("TRADE_VOTE_UPDATE", (d) => dispatch({ type: "TRADE_VOTE_UPDATE", ...d })),
 
       on("OFFER_RECEIVED", (data)  => dispatch({ type: "OFFER_RECEIVED",  ...data })),
       on("OFFER_ACCEPTED", (data)  => dispatch({ type: "OFFER_ACCEPTED",  ...data })),
@@ -82,7 +83,8 @@ function AppController() {
     emit("START_GAME", {});
   };
 
-  const handleReadyToTrade = () => emit("READY_TO_TRADE", {});
+  const handleReadyToTrade  = () => emit("READY_TO_TRADE",   {});
+  const handleVoteEndTrade  = () => emit("VOTE_END_TRADE",   {});
 
   const handleSendOffer    = (toSocketId, chipAmount) => emit("SEND_OFFER",   { toSocketId, chipAmount });
   const handleAcceptOffer  = (offerId)                => emit("ACCEPT_OFFER", { offerId });
@@ -138,7 +140,7 @@ function AppController() {
             roomCode={roomCode}
             players={players}
             isHost={isHost}
-            onNext={handlePackStart}
+            onNext={() => dispatch({ type: "CLIENT_PHASE", phase: "pack_select" })}
           />
         );
 
@@ -169,11 +171,12 @@ function AppController() {
             mySocketId={socket.id}
             collectedFragments={state.collectedFragments}
             incomingOffers={state.tradeOffers}
+            tradeVotes={state.tradeVotes}
             onSendOffer={handleSendOffer}
             onAcceptOffer={handleAcceptOffer}
             onRejectOffer={handleRejectOffer}
             onSteal={handleTriggerSteal}
-            onAnswer={() => emit("TRADE_PHASE_END", {})} // local "skip to answer" — server won't accept this, but kept for UX
+            onVoteEnd={handleVoteEndTrade}
           />
         );
 
