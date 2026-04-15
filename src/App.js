@@ -29,14 +29,11 @@ const SECTIONS = [
   { label: "Results",          steps: ["leaderboard"] },
 ];
 
-// Fallback rounds used before a pack is selected (e.g. navigating via section tabs)
-const DEFAULT_ROUNDS = selectRounds("Mixed");
-
 export default function App() {
   const [step, setStep]       = useState(0);
   const [chips, setChips]     = useState(10);
   const [joinFlow, setJoinFlow] = useState(false);
-  const [rounds, setRounds]   = useState(DEFAULT_ROUNDS);
+  const [rounds, setRounds]   = useState(() => selectRounds("Mixed"));
 
   // Track actual game outcomes
   const [r1Result, setR1Result]           = useState(null); // { correct: bool|null, chipDelta: number }

@@ -283,6 +283,30 @@ const QUESTIONS = [
 
 export default QUESTIONS;
 
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/**
+ * Randomly reassigns fragments across the 4 player slots (You, Mia, Kai, Zoe).
+ * For poison questions Kai's slot is always the poisonFragment; the 3 real
+ * fragments are shuffled among You, Mia, and Zoe.
+ */
+function randomizeFragments(q) {
+  if (q.type === "poison") {
+    const [youF, miaF, , zoeF] = [q.fragment, q.otherFragments[0], null, q.otherFragments[2]];
+    const [newYou, newMia, newZoe] = shuffle([youF, miaF, zoeF]);
+    return { ...q, fragment: newYou, otherFragments: [newMia, q.poisonFragment, newZoe] };
+  }
+  const [newYou, newMia, newKai, newZoe] = shuffle([q.fragment, ...q.otherFragments]);
+  return { ...q, fragment: newYou, otherFragments: [newMia, newKai, newZoe] };
+}
+
 /**
  * Returns [normalQ, stealQ, poisonQ] randomly selected from the given pack.
  * "Mixed" draws from the full bank.
@@ -305,10 +329,10 @@ export function selectRounds(pack) {
   do { steal = pick("steal"); } while (steal.id === normal.id);
   do { poison = pick("poison"); } while (poison.id === normal.id || poison.id === steal.id);
 
-  // Attach display round numbers
+  // Attach display round numbers and randomize fragment assignment per player
   return [
-    { ...normal, num: 1 },
-    { ...steal,  num: 2 },
-    { ...poison, num: 3 },
+    { ...randomizeFragments(normal), num: 1 },
+    { ...randomizeFragments(steal),  num: 2 },
+    { ...randomizeFragments(poison), num: 3 },
   ];
 }
