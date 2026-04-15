@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Phone, ScreenTransition, Hdr, TimerBar, Avatar, ChipBadge, ActivityItem, IncomingTradeModal, Btn } from "../ui";
 import { PLAYERS_DATA } from "../../data/constants";
 
-export default function TradePhase({ round, chips, onAnswer, onSteal, showIncoming = false }) {
+export default function TradePhase({ round, chips, onAnswer, onSteal, onChipChange, showIncoming = false }) {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [tradeAmt, setTradeAmt] = useState(3);
   const [showOffer, setShowOffer] = useState(false);
@@ -27,6 +27,8 @@ export default function TradePhase({ round, chips, onAnswer, onSteal, showIncomi
     setOfferSent(true);
     setActivity(a => [...a, { text: `You offered ${selectedPlayer.name}`, detail: `${tradeAmt} chips`, time: "0:12" }]);
     setTimeout(() => {
+      // Deduct chips for the accepted trade
+      if (onChipChange) onChipChange(-tradeAmt);
       setActivity(a => [...a, { text: `${selectedPlayer.name} accepted!`, detail: "Fragment revealed", time: "0:15" }]);
       setSelectedPlayer(null);
       setShowOffer(false);
@@ -101,6 +103,8 @@ export default function TradePhase({ round, chips, onAnswer, onSteal, showIncomi
             amount={3}
             onAccept={() => {
               setIncomingVisible(false);
+              // Add chips for accepted incoming trade
+              if (onChipChange) onChipChange(3);
               setActivity(a => [...a, { text: "You sold to Mia", detail: "+3 chips", time: "0:18" }]);
             }}
             onReject={() => setIncomingVisible(false)}

@@ -1,23 +1,40 @@
 import { Phone, ScreenTransition, Btn } from "../ui";
 
-const FINAL_STANDINGS = [
-  { name: "Kai", av: "K", color: "#0EA5E9", chips: 28, correct: 8,  steals: 2, bluff: 87 },
-  { name: "You", av: "Y", color: "#DC2626", chips: 22, correct: 7,  steals: 1, bluff: 45 },
-  { name: "Zoe", av: "Z", color: "#F59E0B", chips: 16, correct: 5,  steals: 0, bluff: 92 },
-  { name: "Mia", av: "M", color: "#8B5CF6", chips: 12, correct: 4,  steals: 1, bluff: 23 },
-];
+/* AI player results are simulated but vary per game to feel dynamic */
+function generateAiStandings(playerChips, playerStats) {
+  const baseChips = [17, 14, 11]; // Kai, Zoe, Mia starting points
+  return [
+    { name: "Kai", av: "K", color: "#0EA5E9", chips: baseChips[0] + Math.floor(Math.random() * 8), correct: 5 + Math.floor(Math.random() * 3), steals: 1 + Math.floor(Math.random() * 2), bluff: 72 + Math.floor(Math.random() * 20) },
+    { name: "Zoe", av: "Z", color: "#F59E0B", chips: baseChips[1] + Math.floor(Math.random() * 6), correct: 3 + Math.floor(Math.random() * 3), steals: Math.floor(Math.random() * 2),               bluff: 80 + Math.floor(Math.random() * 15) },
+    { name: "Mia", av: "M", color: "#8B5CF6", chips: baseChips[2] + Math.floor(Math.random() * 5), correct: 3 + Math.floor(Math.random() * 2), steals: Math.floor(Math.random() * 2),               bluff: 20 + Math.floor(Math.random() * 20) },
+  ];
+}
 
-export default function Leaderboard({ onRestart }) {
+export default function Leaderboard({ chips = 10, stats = { correct: 0, steals: 0 }, onRestart }) {
+  // Generate AI standings once; useMemo would be ideal but static ref is fine for a demo
+  const aiPlayers = generateAiStandings(chips, stats);
+
+  const you = {
+    name: "You", av: "Y", color: "#DC2626",
+    chips,
+    correct: stats.correct,
+    steals: stats.steals,
+    bluff: Math.min(99, Math.round((stats.steals / Math.max(1, stats.correct + stats.steals)) * 100 + Math.random() * 30)),
+  };
+
+  // Sort all players by chip count descending
+  const standings = [you, ...aiPlayers].sort((a, b) => b.chips - a.chips);
+
   return (
     <Phone>
       <ScreenTransition type="scale">
         <div style={{ padding: "12px 24px 8px", textAlign: "center" }}>
           <div style={{ fontFamily: "var(--fd)", fontSize: 36, letterSpacing: 4, lineHeight: 1 }}>GAME OVER</div>
-          <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--txt-d)", letterSpacing: 2, marginTop: 4 }}>15 ROUNDS COMPLETED</div>
+          <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--txt-d)", letterSpacing: 2, marginTop: 4 }}>3 ROUNDS COMPLETED</div>
         </div>
 
         <div style={{ flex: 1, padding: "12px 20px", overflow: "auto", minHeight: 0 }}>
-          {FINAL_STANDINGS.map((p, i) => (
+          {standings.map((p, i) => (
             <div key={p.name} style={{
               background: i === 0 ? `${p.color}08` : "var(--s1)",
               border: `1.5px solid ${i === 0 ? p.color : "var(--bdr)"}`,
@@ -41,7 +58,7 @@ export default function Leaderboard({ onRestart }) {
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-                {[{l:"Correct",v:p.correct},{l:"Steals",v:p.steals},{l:"Bluff",v:`${p.bluff}%`}].map(s => (
+                {[{ l: "Correct", v: p.correct }, { l: "Steals", v: p.steals }, { l: "Bluff", v: `${p.bluff}%` }].map(s => (
                   <div key={s.l} style={{ background: "var(--s2)", borderRadius: 8, padding: 8, textAlign: "center" }}>
                     <div style={{ fontFamily: "var(--fm)", fontSize: 15, fontWeight: 600 }}>{s.v}</div>
                     <div style={{ fontFamily: "var(--fm)", fontSize: 9, color: "var(--txt-d)", letterSpacing: 1, marginTop: 2 }}>{s.l.toUpperCase()}</div>
