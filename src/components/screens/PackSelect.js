@@ -62,7 +62,7 @@ export default function PackSelect({ onNext }) {
         </div>
 
         <div style={{ padding: "12px 24px 28px" }}>
-          <Btn primary disabled={!selectedPack} onClick={() => onNext(selectedPack, selectedLength)}>
+          <Btn primary disabled={!selectedPack} onClick={() => onNext(selectedPack, selectedLength)} style={{ background: selectedPack ? "var(--red)" : undefined }}>
             Start Game
           </Btn>
         </div>

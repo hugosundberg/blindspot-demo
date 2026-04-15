@@ -1,59 +1,82 @@
 import { useState, useEffect } from "react";
 import { Phone, ScreenTransition, Hdr, TimerBar, Avatar, ChipBadge, ActivityItem, IncomingTradeModal, Btn } from "../ui";
-import { PLAYERS_DATA } from "../../data/constants";
+import { useGame } from "../../context/GameContext";
 
-export default function TradePhase({ round, chips, onAnswer, onSteal, onChipChange, showIncoming = false }) {
+export default function TradePhase({
+  round, chips, players = [], mySocketId,
+  collectedFragments = [],
+  incomingOffers = [],
+  onSendOffer, onAcceptOffer, onRejectOffer,
+  onSteal,
+}) {
+  const { state } = useGame();
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [tradeAmt, setTradeAmt] = useState(3);
   const [showOffer, setShowOffer] = useState(false);
-  const [incomingVisible, setIncomingVisible] = useState(false);
   const [offerSent, setOfferSent] = useState(false);
   const [activity, setActivity] = useState([]);
   const [timer, setTimer] = useState(100);
 
+  // Trade window countdown (visual only — server is authoritative)
   useEffect(() => {
-    const iv = setInterval(() => setTimer(t => Math.max(0, t - 0.5)), 300);
+    const iv = setInterval(() => setTimer(t => Math.max(0, t - 0.25)), 225);
     return () => clearInterval(iv);
   }, []);
 
+  // Append server trade activity to the log
   useEffect(() => {
-    const t1 = setTimeout(() => setActivity(a => [...a, { text: "Mia is looking around...", time: "0:04" }]), 2000);
-    const t2 = setTimeout(() => setActivity(a => [...a, { text: "Kai bought from Zoe", detail: "2 chips", time: "0:08" }]), 4000);
-    const t3 = showIncoming ? setTimeout(() => setIncomingVisible(true), 5500) : null;
-    return () => { clearTimeout(t1); clearTimeout(t2); if (t3) clearTimeout(t3); };
-  }, [showIncoming]);
+    const off = () => {}; // activity comes via GameContext TRADE_ACTIVITY dispatch in App
+    return off;
+  }, []);
+
+  // Pull TRADE_ACTIVITY events from GameContext into local log
+  const tradeActivity = state.tradeActivity || [];
+  useEffect(() => {
+    if (tradeActivity.length > activity.length) {
+      setActivity(tradeActivity);
+    }
+  }, [tradeActivity]); // eslint-disable-line
+
+  // Dismiss offer panel when a steal is triggered
+  const stealActive = !!state.stealState;
+
+  const otherPlayers = players.filter(p => p.socketId !== mySocketId);
 
   const handleSendOffer = () => {
+    if (!selectedPlayer || offerSent) return;
     setOfferSent(true);
-    setActivity(a => [...a, { text: `You offered ${selectedPlayer.name}`, detail: `${tradeAmt} chips`, time: "0:12" }]);
+    if (onSendOffer) onSendOffer(selectedPlayer.socketId, tradeAmt);
     setTimeout(() => {
-      // Deduct chips for the accepted trade
-      if (onChipChange) onChipChange(-tradeAmt);
-      setActivity(a => [...a, { text: `${selectedPlayer.name} accepted!`, detail: "Fragment revealed", time: "0:15" }]);
       setSelectedPlayer(null);
       setShowOffer(false);
       setOfferSent(false);
     }, 1500);
   };
 
+  // Active incoming offer (show the first one)
+  const activeOffer = incomingOffers[0] || null;
+
+  if (!round) return null;
+
   return (
     <Phone>
       <ScreenTransition type="fade">
-        <Hdr round={round.num} total={15} phase="TRADE" chips={chips} />
+        <Hdr round={round.roundNum} total={round.totalRounds} phase="TRADE" chips={chips} />
         <TimerBar pct={timer} color={timer < 30 ? "var(--amb)" : "var(--red)"} />
 
         <div style={{ flex: 1, padding: "12px 24px", display: "flex", flexDirection: "column", gap: 12, overflow: "auto", minHeight: 0, position: "relative" }}>
           {/* Player grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-            {PLAYERS_DATA.slice(1).map((p, i) => (
-              <div key={p.id} onClick={() => { setSelectedPlayer(p); setShowOffer(true); }} style={{
-                background: selectedPlayer?.id === p.id ? `${p.color}12` : "var(--s1)",
-                border: `1.5px solid ${selectedPlayer?.id === p.id ? p.color : "var(--bdr)"}`,
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(otherPlayers.length, 3)}, 1fr)`, gap: 10 }}>
+            {otherPlayers.map((p, i) => (
+              <div key={p.socketId} onClick={() => { if (!stealActive) { setSelectedPlayer(p); setShowOffer(true); } }} style={{
+                background: selectedPlayer?.socketId === p.socketId ? `${p.color}12` : "var(--s1)",
+                border: `1.5px solid ${selectedPlayer?.socketId === p.socketId ? p.color : "var(--bdr)"}`,
                 borderRadius: 14, padding: "14px 10px", display: "flex", flexDirection: "column",
-                alignItems: "center", gap: 6, cursor: "pointer", transition: "all 0.2s",
+                alignItems: "center", gap: 6, cursor: stealActive ? "default" : "pointer", transition: "all 0.2s",
                 animation: `fadeUp 0.3s ease-out ${i * 0.06}s both`,
+                opacity: stealActive ? 0.5 : 1,
               }}>
-                <Avatar player={p} size={40} glow={selectedPlayer?.id === p.id} />
+                <Avatar player={p} size={40} glow={selectedPlayer?.socketId === p.socketId} />
                 <span style={{ fontSize: 12, fontWeight: 500 }}>{p.name}</span>
                 <ChipBadge chips={p.chips} size="sm" />
               </div>
@@ -61,7 +84,7 @@ export default function TradePhase({ round, chips, onAnswer, onSteal, onChipChan
           </div>
 
           {/* Trade panel */}
-          {showOffer && selectedPlayer && !incomingVisible && (
+          {showOffer && selectedPlayer && !activeOffer && !stealActive && (
             <div style={{ background: "var(--s1)", border: "1px solid var(--bdr)", borderRadius: 14, padding: 18, animation: "fadeUp 0.3s ease-out" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -75,9 +98,21 @@ export default function TradePhase({ round, chips, onAnswer, onSteal, onChipChan
                 <div style={{ fontFamily: "var(--fd)", fontSize: 46, color: "var(--red)", lineHeight: 1, minWidth: 50, textAlign: "center", textShadow: "0 0 20px var(--red-g)" }}>{tradeAmt}</div>
                 <div onClick={() => setTradeAmt(Math.min(10, tradeAmt + 1))} style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--s2)", border: "1px solid var(--bdr)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, color: "var(--txt-m)" }}>+</div>
               </div>
-              <Btn primary onClick={handleSendOffer} disabled={offerSent}>
-                {offerSent ? "Offer sent..." : "Send Offer"}
+              <Btn primary onClick={handleSendOffer} disabled={offerSent || chips < tradeAmt}>
+                {offerSent ? "Offer sent..." : chips < tradeAmt ? "Not enough chips" : "Send Offer"}
               </Btn>
+            </div>
+          )}
+
+          {/* Fragments collected so far */}
+          {collectedFragments.length > 0 && (
+            <div style={{ background: "var(--s1)", border: "1px solid var(--bdr)", borderRadius: 12, padding: 12 }}>
+              <div style={{ fontFamily: "var(--fm)", fontSize: 10, color: "var(--txt-d)", letterSpacing: 2, marginBottom: 8 }}>FRAGMENTS</div>
+              {collectedFragments.map((f, i) => (
+                <div key={i} style={{ padding: "6px 10px", background: "var(--s2)", borderRadius: 8, fontSize: 12, color: "var(--txt-m)", borderLeft: `2px solid ${f.isPoison ? "var(--amb)" : f.isOwn ? "var(--red)" : "#0EA5E9"}`, marginBottom: 4 }}>
+                  "{f.fragment}"
+                </div>
+              ))}
             </div>
           )}
 
@@ -93,21 +128,18 @@ export default function TradePhase({ round, chips, onAnswer, onSteal, onChipChan
 
         {/* Bottom actions */}
         <div style={{ padding: "8px 24px 28px", display: "flex", gap: 10 }}>
-          <Btn onClick={onAnswer} style={{ flex: 1 }}>Answer</Btn>
-          <Btn danger onClick={onSteal} style={{ flex: 2, animation: "borderGlow 2s ease-in-out infinite", background: "transparent", border: "2px solid var(--red)", color: "var(--red)" }}>⚡ STEAL</Btn>
+          <Btn danger onClick={onSteal} disabled={stealActive} style={{ flex: 1, animation: stealActive ? "none" : "borderGlow 2s ease-in-out infinite", background: "transparent", border: `2px solid ${stealActive ? "var(--bdr)" : "var(--red)"}`, color: stealActive ? "var(--txt-d)" : "var(--red)" }}>
+            ⚡ STEAL
+          </Btn>
         </div>
 
-        {incomingVisible && (
+        {/* Incoming trade modal */}
+        {activeOffer && (
           <IncomingTradeModal
-            from={PLAYERS_DATA[1]}
-            amount={3}
-            onAccept={() => {
-              setIncomingVisible(false);
-              // Add chips for accepted incoming trade
-              if (onChipChange) onChipChange(3);
-              setActivity(a => [...a, { text: "You sold to Mia", detail: "+3 chips", time: "0:18" }]);
-            }}
-            onReject={() => setIncomingVisible(false)}
+            from={activeOffer.fromPlayer}
+            amount={activeOffer.chipAmount}
+            onAccept={() => onAcceptOffer(activeOffer.offerId)}
+            onReject={() => onRejectOffer(activeOffer.offerId)}
           />
         )}
       </ScreenTransition>

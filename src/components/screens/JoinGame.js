@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { Phone, ScreenTransition, Btn } from "../ui";
 
-export default function JoinGame({ onJoin, onBack }) {
+const COLORS = ["#DC2626","#8B5CF6","#0EA5E9","#F59E0B","#10B981","#EC4899","#F97316","#6366F1"];
+
+export default function JoinGame({ playerName, playerColor, onNameChange, onColorChange, onJoin, onBack }) {
   const [code, setCode] = useState("");
   const [connecting, setConnecting] = useState(false);
 
+  const ready = playerName?.trim().length > 0 && code.length === 4;
+
   const handleJoin = () => {
+    if (!ready) return;
     setConnecting(true);
-    setTimeout(onJoin, 1500);
+    onJoin(code.toUpperCase());
   };
 
   return (
@@ -23,14 +28,34 @@ export default function JoinGame({ onJoin, onBack }) {
           <div style={{ fontFamily: "var(--fd)", fontSize: 28, letterSpacing: 2, lineHeight: 1 }}>JOIN GAME</div>
         </div>
 
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 24px" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 24px", gap: 16 }}>
           <div style={{ animation: "fadeUp 0.4s ease-out" }}>
+            {/* Name input */}
+            <div style={{ background: "var(--s1)", borderRadius: 14, border: "1.5px solid var(--bdr)", padding: "4px", marginBottom: 12 }}>
+              <input
+                type="text"
+                maxLength={16}
+                value={playerName}
+                onChange={e => onNameChange(e.target.value)}
+                placeholder="Your name..."
+                style={{ width: "100%", background: "transparent", border: "none", padding: "12px 16px", fontSize: 16, fontWeight: 500, color: "var(--txt)", outline: "none" }}
+              />
+            </div>
+
+            {/* Colour picker */}
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 20 }}>
+              {COLORS.map(c => (
+                <div key={c} onClick={() => onColorChange(c)} style={{ width: 28, height: 28, borderRadius: "50%", background: c, cursor: "pointer", border: playerColor === c ? "2.5px solid white" : "2.5px solid transparent", boxShadow: playerColor === c ? `0 0 10px ${c}` : "none", transition: "all 0.15s" }} />
+              ))}
+            </div>
+
+            {/* Room code label */}
             <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--txt-d)", letterSpacing: 2, marginBottom: 16, textAlign: "center" }}>
               ENTER ROOM CODE
             </div>
 
-            {/* 4-box code input */}
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 32 }}>
+            {/* 4-box code display */}
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 20 }}>
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} style={{
                   width: 64, height: 72, background: "var(--s1)",
@@ -44,25 +69,20 @@ export default function JoinGame({ onJoin, onBack }) {
               ))}
             </div>
 
-            {/* Hidden real input driving the boxes */}
+            {/* Hidden real input */}
             <input
               autoFocus
               maxLength={4}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
-              style={{
-                position: "absolute", opacity: 0, pointerEvents: "none", width: 1, height: 1,
-              }}
+              onKeyDown={e => e.key === "Enter" && handleJoin()}
+              style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 1, height: 1 }}
             />
 
             {/* Visible tap-to-type area */}
             <div
               onClick={() => document.querySelector("input[maxlength='4']")?.focus()}
-              style={{
-                background: "var(--s1)", border: "1.5px solid var(--bdr)", borderRadius: 12,
-                padding: "14px 16px", textAlign: "center", cursor: "text", marginBottom: 24,
-                fontSize: 14, color: "var(--txt-d)",
-              }}
+              style={{ background: "var(--s1)", border: "1.5px solid var(--bdr)", borderRadius: 12, padding: "14px 16px", textAlign: "center", cursor: "text", marginBottom: 24, fontSize: 14, color: "var(--txt-d)" }}
             >
               Tap to type code
             </div>
@@ -77,7 +97,7 @@ export default function JoinGame({ onJoin, onBack }) {
                 <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--txt-d)", letterSpacing: 2 }}>CONNECTING...</div>
               </div>
             ) : (
-              <Btn primary disabled={code.length < 4} onClick={handleJoin}>Join Game</Btn>
+              <Btn primary disabled={!ready} onClick={handleJoin}>Join Game</Btn>
             )}
           </div>
         </div>

@@ -1,161 +1,243 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Splash, JoinGame, Lobby, PackSelect, Countdown,
   ReadPhase, TradePhase, AnswerPhase, RoundResult,
-  StealSequence, PoisonReveal, Leaderboard,
+  StealSequence, Leaderboard,
 } from "./components/screens";
-import { PLAYERS_DATA } from "./data/constants";
-import { selectRounds } from "./data/questions";
+import { GameProvider, useGame } from "./context/GameContext";
+import { useSocket } from "./hooks/useSocket";
 
 /* ─────────────────────────────────────────────
-   FLOW
-   Each string is a unique screen key.
-   "join" is entered via the Join path on Splash.
+   AppController — inside GameProvider so it can
+   read/write context and register socket events.
 ───────────────────────────────────────────── */
-const FLOW = [
-  "splash",
-  "lobby", "pack", "countdown",
-  "r1_read", "r1_trade", "r1_answer", "r1_result",
-  "r2_read", "r2_trade", "r2_steal",
-  "r3_read", "r3_trade", "r3_answer", "r3_poison",
-  "leaderboard",
-];
+function AppController() {
+  const { state, dispatch } = useGame();
+  const { socket, emit, on } = useSocket();
 
-const SECTIONS = [
-  { label: "Setup",            steps: ["splash","lobby","pack","countdown"] },
-  { label: "Round 1",          steps: ["r1_read","r1_trade","r1_answer","r1_result"] },
-  { label: "Round 2 — Steal",  steps: ["r2_read","r2_trade","r2_steal"] },
-  { label: "Round 3 — Poison", steps: ["r3_read","r3_trade","r3_answer","r3_poison"] },
-  { label: "Results",          steps: ["leaderboard"] },
-];
+  // Pre-game identity (name + colour chosen before creating/joining)
+  const [playerName,  setPlayerName]  = useState("");
+  const [playerColor, setPlayerColor] = useState("#DC2626");
+  const [joinFlow,    setJoinFlow]    = useState(false);
+  const [error,       setError]       = useState(null);
 
-export default function App() {
-  const [step, setStep]       = useState(0);
-  const [chips, setChips]     = useState(10);
-  const [joinFlow, setJoinFlow] = useState(false);
-  const [rounds, setRounds]   = useState(() => selectRounds("Mixed"));
+  /* ─── Register all socket → dispatch listeners once ─── */
+  useEffect(() => {
+    const offs = [
+      on("connect",        ()       => dispatch({ type: "SET_IDENTITY", socketId: socket.id, playerId: null, name: playerName, color: playerColor })),
 
-  // Track actual game outcomes
-  const [r1Result, setR1Result]           = useState(null); // { correct: bool|null, chipDelta: number }
-  const [r2StealByPlayer, setR2StealByPlayer] = useState(false);
-  const [r3Correct, setR3Correct]         = useState(null); // bool | null
-  const [stats, setStats]                 = useState({ correct: 0, steals: 0 });
+      on("ROOM_CREATED",   (data)   => { dispatch({ type: "ROOM_CREATED",  ...data }); dispatch({ type: "SET_HOST", isHost: true }); }),
+      on("JOIN_ACK",       (data)   => { if (data.ok) { dispatch({ type: "JOIN_ACK", ...data }); setJoinFlow(false); } else { setError(data.error); } }),
+      on("PLAYER_JOINED",  (data)   => dispatch({ type: "PLAYER_JOINED",  ...data })),
+      on("PLAYER_LEFT",    (data)   => dispatch({ type: "PLAYER_LEFT",    ...data })),
+      on("PACK_SELECTED",  (data)   => dispatch({ type: "PACK_SELECTED",  ...data })),
+      on("GAME_STARTING",  (data)   => dispatch({ type: "GAME_STARTING",  ...data })),
 
-  const screen = joinFlow ? "join" : FLOW[step];
-  const next   = () => setStep(s => Math.min(s + 1, FLOW.length - 1));
-  const jumpTo = (name) => { const idx = FLOW.indexOf(name); if (idx >= 0) setStep(idx); };
+      on("ROUND_START",    (data)   => { dispatch({ type: "ROUND_START",    ...data }); }),
+      on("PLAYERS_STATUS", (data)   => dispatch({ type: "PLAYERS_STATUS",  ...data })),
+      on("TRADE_PHASE_START", (d)  => dispatch({ type: "TRADE_PHASE_START", ...d })),
+      on("TRADE_PHASE_END",   ()   => dispatch({ type: "TRADE_PHASE_END" })),
 
-  const restart = () => {
-    setStep(0);
-    setChips(10);
-    setJoinFlow(false);
-    setRounds(selectRounds("Mixed"));
-    setR1Result(null);
-    setR2StealByPlayer(false);
-    setR3Correct(null);
-    setStats({ correct: 0, steals: 0 });
+      on("OFFER_RECEIVED", (data)  => dispatch({ type: "OFFER_RECEIVED",  ...data })),
+      on("OFFER_ACCEPTED", (data)  => dispatch({ type: "OFFER_ACCEPTED",  ...data })),
+      on("OFFER_REJECTED", (data)  => dispatch({ type: "OFFER_REJECTED",  ...data })),
+      on("CHIPS_UPDATED",  (data)  => dispatch({ type: "CHIPS_UPDATED",   ...data })),
+      on("TRADE_ACTIVITY", (data)  => dispatch({ type: "TRADE_ACTIVITY",  ...data })),
+
+      on("STEAL_INITIATED", (data) => dispatch({ type: "STEAL_INITIATED", ...data })),
+      on("STEAL_RESULT",    (data) => dispatch({ type: "STEAL_RESULT",    ...data })),
+      on("STEAL_TIMEOUT",   (data) => dispatch({ type: "STEAL_TIMEOUT",   ...data })),
+
+      on("ANSWER_PHASE_START", (d) => dispatch({ type: "ANSWER_PHASE_START", ...d })),
+      on("ANSWER_RECEIVED",    (d) => dispatch({ type: "ANSWER_RECEIVED",    ...d })),
+      on("ROUND_RESULT",       (d) => dispatch({ type: "ROUND_RESULT",       ...d })),
+      on("LEADERBOARD",        (d) => dispatch({ type: "LEADERBOARD",        ...d })),
+      on("ROOM_ERROR",         (d) => setError(d.message)),
+    ];
+    return () => offs.forEach(off => off());
+  }, []); // eslint-disable-line
+
+  /* ─── Helpers that emit to the server ─── */
+  const handleCreateGame = () => {
+    if (!playerName.trim()) return;
+    emit("CREATE_ROOM", {
+      name: playerName.trim(),
+      avatarChar: playerName.trim()[0].toUpperCase(),
+      color: playerColor,
+    });
   };
 
-  // Called by PackSelect with the chosen pack name
-  const handlePackSelect = (pack) => {
-    setRounds(selectRounds(pack));
-    next();
+  const handleJoinGame = (code) => {
+    if (!playerName.trim()) return;
+    emit("JOIN_ROOM", {
+      roomCode: code.toUpperCase(),
+      name: playerName.trim(),
+      avatarChar: playerName.trim()[0].toUpperCase(),
+      color: playerColor,
+    });
   };
 
+  const handlePackStart = (pack, totalRounds) => {
+    emit("SELECT_PACK", { pack, totalRounds });
+    emit("START_GAME", {});
+  };
+
+  const handleReadyToTrade = () => emit("READY_TO_TRADE", {});
+
+  const handleSendOffer    = (toSocketId, chipAmount) => emit("SEND_OFFER",   { toSocketId, chipAmount });
+  const handleAcceptOffer  = (offerId)                => emit("ACCEPT_OFFER", { offerId });
+  const handleRejectOffer  = (offerId)                => emit("REJECT_OFFER", { offerId });
+  const handleTriggerSteal = ()                       => emit("TRIGGER_STEAL", {});
+
+  const handleSubmitSteal  = (answer)  => emit("SUBMIT_STEAL",  { answer });
+  const handleSubmitAnswer = (answer)  => emit("SUBMIT_ANSWER", { answer });
+  const handlePass         = ()        => emit("PASS", {});
+
+  const handleRestart = () => {
+    dispatch({ type: "RESET" });
+    setError(null);
+  };
+
+  /* ─── Derive convenient shorthand ─── */
+  const { phase, myChips, currentRound, lastResult, leaderboard, players, roomCode, isHost, stealState } = state;
+
+  /* ─── Render the right screen for each phase ─── */
   const renderScreen = () => {
-    const [r1, r2, r3] = rounds;
 
-    switch (screen) {
-      case "splash":    return <Splash onNext={next} onJoin={() => setJoinFlow(true)} />;
-      case "join":      return <JoinGame onJoin={() => { setJoinFlow(false); jumpTo("lobby"); }} onBack={() => setJoinFlow(false)} />;
-      case "lobby":     return <Lobby onNext={next} />;
-      case "pack":      return <PackSelect onNext={handlePackSelect} />;
-      case "countdown": return <Countdown onNext={next} />;
+    // Pre-game: user hasn't created/joined yet
+    if (!roomCode && !joinFlow) {
+      return (
+        <Splash
+          playerName={playerName}
+          playerColor={playerColor}
+          onNameChange={setPlayerName}
+          onColorChange={setPlayerColor}
+          onNext={handleCreateGame}
+          onJoin={() => setJoinFlow(true)}
+        />
+      );
+    }
 
-      // ── Round 1: normal ──
-      case "r1_read":   return <ReadPhase round={r1} chips={chips} onNext={next} />;
-      case "r1_trade":  return (
-        <TradePhase round={r1} chips={chips} showIncoming
-          onChipChange={(delta) => setChips(c => c + delta)}
-          onAnswer={next}
-          onSteal={() => jumpTo("r1_answer")}
+    if (joinFlow) {
+      return (
+        <JoinGame
+          playerName={playerName}
+          playerColor={playerColor}
+          onNameChange={setPlayerName}
+          onColorChange={setPlayerColor}
+          onJoin={handleJoinGame}
+          onBack={() => setJoinFlow(false)}
         />
       );
-      case "r1_answer": return (
-        <AnswerPhase round={r1} chips={chips} correctAnswer={r1.answer}
-          onSubmit={(correct) => {
-            let delta = 0;
-            if (correct === true)  { delta = 5;  setChips(c => c + 5); setStats(s => ({ ...s, correct: s.correct + 1 })); }
-            if (correct === false) { delta = -2; setChips(c => c - 2); }
-            setR1Result({ correct, chipDelta: delta });
-            next();
-          }}
-        />
-      );
-      case "r1_result": return (
-        <RoundResult
-          round={r1}
-          correct={r1Result ? r1Result.correct : null}
-          chips={chips}
-          chipDelta={r1Result ? r1Result.chipDelta : 0}
-          onNext={next}
-        />
-      );
+    }
 
-      // ── Round 2: steal ──
-      case "r2_read":  return <ReadPhase round={r2} chips={chips} onNext={next} />;
-      case "r2_trade": return (
-        <TradePhase round={r2} chips={chips}
-          onChipChange={(delta) => setChips(c => c + delta)}
-          onAnswer={() => { setR2StealByPlayer(false); next(); }}
-          onSteal={() => { setR2StealByPlayer(true); next(); }}
-        />
-      );
-      case "r2_steal": return (
-        <StealSequence
-          round={r2}
-          isPlayerSteal={r2StealByPlayer}
-          stealer={r2StealByPlayer ? PLAYERS_DATA[0] : PLAYERS_DATA[2]}
-          onNext={(correct) => {
-            if (r2StealByPlayer) {
-              if (correct) { setChips(c => c + 8); setStats(s => ({ ...s, steals: s.steals + 1 })); }
-              else         { setChips(c => c - 5); }
-            } else {
-              // Kai stole — player loses 1 chip
-              setChips(c => c - 1);
-            }
-            next();
-          }}
-        />
-      );
+    switch (phase) {
+      case "lobby":
+        return (
+          <Lobby
+            roomCode={roomCode}
+            players={players}
+            isHost={isHost}
+            onNext={handlePackStart}
+          />
+        );
 
-      // ── Round 3: poison ──
-      case "r3_read":   return <ReadPhase round={r3} chips={chips} onNext={next} />;
-      case "r3_trade":  return (
-        <TradePhase round={r3} chips={chips}
-          onChipChange={(delta) => setChips(c => c + delta)}
-          onAnswer={next}
-          onSteal={() => jumpTo("r3_answer")}
-        />
-      );
-      case "r3_answer": return (
-        <AnswerPhase round={r3} chips={chips} correctAnswer={r3.answer}
-          onSubmit={(correct) => {
-            if (correct === true)  { setChips(c => c + 5); setStats(s => ({ ...s, correct: s.correct + 1 })); }
-            if (correct === false) { setChips(c => c - 2); }
-            setR3Correct(correct);
-            next();
-          }}
-        />
-      );
-      case "r3_poison": return <PoisonReveal round={r3} chips={chips} correct={r3Correct} onNext={next} />;
+      case "pack_select":
+        return isHost
+          ? <PackSelect onNext={handlePackStart} />
+          : <Lobby roomCode={roomCode} players={players} isHost={false} waiting="Waiting for host to select pack..." />;
 
-      case "leaderboard": return <Leaderboard chips={chips} stats={stats} onRestart={restart} />;
-      default:            return <Splash onNext={next} onJoin={() => setJoinFlow(true)} />;
+      case "countdown":
+        return <Countdown onNext={() => {}} />;
+
+      case "read":
+        return (
+          <ReadPhase
+            round={currentRound}
+            chips={myChips}
+            players={players}
+            onNext={handleReadyToTrade}
+          />
+        );
+
+      case "trade":
+        return (
+          <TradePhase
+            round={currentRound}
+            chips={myChips}
+            players={players}
+            mySocketId={socket.id}
+            collectedFragments={state.collectedFragments}
+            incomingOffers={state.tradeOffers}
+            onSendOffer={handleSendOffer}
+            onAcceptOffer={handleAcceptOffer}
+            onRejectOffer={handleRejectOffer}
+            onSteal={handleTriggerSteal}
+            onAnswer={() => emit("TRADE_PHASE_END", {})} // local "skip to answer" — server won't accept this, but kept for UX
+          />
+        );
+
+      case "steal":
+        return (
+          <StealSequence
+            round={currentRound}
+            stealState={stealState}
+            mySocketId={socket.id}
+            players={players}
+            onSubmitSteal={handleSubmitSteal}
+          />
+        );
+
+      case "steal_result": {
+        const result = stealState?.result;
+        return (
+          <StealSequence
+            round={currentRound}
+            stealState={{ ...stealState, result }}
+            mySocketId={socket.id}
+            players={players}
+            onSubmitSteal={handleSubmitSteal}
+          />
+        );
+      }
+
+      case "answer":
+        return (
+          <AnswerPhase
+            round={currentRound}
+            chips={myChips}
+            collectedFragments={state.collectedFragments}
+            answeredPlayers={state.answeredPlayers}
+            players={players}
+            onSubmit={handleSubmitAnswer}
+            onPass={handlePass}
+          />
+        );
+
+      case "result":
+        return (
+          <RoundResult
+            round={currentRound}
+            result={lastResult}
+            mySocketId={socket.id}
+            chips={myChips}
+            players={players}
+          />
+        );
+
+      case "leaderboard":
+        return (
+          <Leaderboard
+            leaderboard={leaderboard}
+            mySocketId={socket.id}
+            onRestart={handleRestart}
+          />
+        );
+
+      default:
+        return <Splash playerName={playerName} onNameChange={setPlayerName} onNext={handleCreateGame} onJoin={() => setJoinFlow(true)} />;
     }
   };
-
-  const currentSection = SECTIONS.findIndex(s => s.steps.includes(screen));
 
   return (
     <div style={{
@@ -166,38 +248,41 @@ export default function App() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
         <span style={{ fontFamily: "var(--fd)", fontSize: 22, letterSpacing: 6, color: "#DC2626", textShadow: "0 0 20px rgba(220,38,38,0.3)" }}>BLINDSPOT</span>
-        <span style={{ fontFamily: "var(--fm)", fontSize: 9, color: "#44444F", letterSpacing: 2, border: "1px solid #2A2A32", padding: "2px 8px", borderRadius: 4 }}>DEMO</span>
+        <span style={{ fontFamily: "var(--fm)", fontSize: 9, color: "#44444F", letterSpacing: 2, border: "1px solid #2A2A32", padding: "2px 8px", borderRadius: 4 }}>BETA</span>
+        {roomCode && (
+          <span style={{ fontFamily: "var(--fm)", fontSize: 9, color: "#DC2626", letterSpacing: 2, border: "1px solid #2A2A32", padding: "2px 8px", borderRadius: 4 }}>
+            {roomCode}
+          </span>
+        )}
       </div>
 
-      {/* Section nav */}
-      <div style={{ display: "flex", gap: 3, marginBottom: 6, flexWrap: "wrap", justifyContent: "center", maxWidth: 400, padding: "0 12px" }}>
-        {SECTIONS.map((s, i) => (
-          <div key={s.label} onClick={() => jumpTo(s.steps[0])} style={{
-            padding: "4px 10px", borderRadius: 6, cursor: "pointer",
-            background: i === currentSection ? "var(--red)" : "#111114",
-            border: `1px solid ${i === currentSection ? "var(--red)" : "#2A2A32"}`,
-            fontSize: 10, fontFamily: "'Outfit',sans-serif",
-            color: i === currentSection ? "white" : "#6B6B76",
-            fontWeight: i === currentSection ? 600 : 400, letterSpacing: .3, transition: "all 0.2s",
-          }}>{s.label}</div>
-        ))}
-      </div>
-
-      {/* Progress bar */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 16, maxWidth: 390, width: "100%", padding: "0 12px" }}>
-        {FLOW.map((_, i) => (
-          <div key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i <= step ? "var(--red)" : "#2A2A32", transition: "background 0.3s" }} />
-        ))}
-      </div>
+      {/* Error toast */}
+      {error && (
+        <div onClick={() => setError(null)} style={{
+          background: "rgba(220,38,38,0.12)", border: "1px solid var(--red)", borderRadius: 8,
+          padding: "8px 16px", marginBottom: 8, fontSize: 13, color: "var(--red)", cursor: "pointer",
+          maxWidth: 390,
+        }}>
+          {error} — tap to dismiss
+        </div>
+      )}
 
       {/* Screen */}
-      <div key={screen} style={{ width: 390, height: 760, flexShrink: 0 }}>
+      <div key={phase} style={{ width: 390, height: 760, flexShrink: 0 }}>
         {renderScreen()}
       </div>
 
       <div style={{ marginTop: 12, fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: "#44444F", letterSpacing: 1, textAlign: "center", padding: "0 20px" }}>
-        NAVIGATE VIA SECTION TABS OR IN-APP BUTTONS • {step + 1}/{FLOW.length}
+        PHASE: {phase.toUpperCase()} • CHIPS: {myChips} {roomCode ? `• ROOM: ${roomCode}` : ""}
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <GameProvider>
+      <AppController />
+    </GameProvider>
   );
 }

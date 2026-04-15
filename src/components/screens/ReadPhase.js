@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Phone, ScreenTransition, Hdr, TimerBar, Pill, FragmentCard, Avatar, Btn } from "../ui";
-import { PLAYERS_DATA } from "../../data/constants";
 
-export default function ReadPhase({ round, chips, onNext }) {
+export default function ReadPhase({ round, chips, players = [], onNext }) {
   const [revealed, setRevealed] = useState(false);
   const [timer, setTimer] = useState(100);
 
@@ -12,10 +11,16 @@ export default function ReadPhase({ round, chips, onNext }) {
     return () => clearInterval(iv);
   }, []);
 
+  if (!round) return null;
+
+  const isPoison = round.isPoison;
+  // Other players are everyone except myself (identified by being already in players list)
+  const otherPlayers = players.slice(0, 3); // show up to 3 others
+
   return (
     <Phone>
       <ScreenTransition type="fade">
-        <Hdr round={round.num} total={15} phase="READ" chips={chips} />
+        <Hdr round={round.roundNum} total={round.totalRounds} phase="READ" chips={chips} />
         <TimerBar pct={timer} />
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 24px" }}>
@@ -26,23 +31,25 @@ export default function ReadPhase({ round, chips, onNext }) {
           <div style={{ opacity: revealed ? 1 : 0, transform: revealed ? "translateY(0)" : "translateY(16px)", transition: "all 0.6s ease-out" }}>
             <FragmentCard
               text={round.fragment}
-              verified={!round.poison}
-              label={round.poison ? "⚠ Your Fragment" : "Your Fragment"}
-              accent={round.poison ? "var(--amb)" : "var(--red)"}
+              verified={!isPoison}
+              label={isPoison ? "⚠ Your Fragment" : "Your Fragment"}
+              accent={isPoison ? "var(--amb)" : "var(--red)"}
             />
           </div>
 
-          {round.poison && revealed && (
+          {isPoison && revealed && (
             <div style={{ textAlign: "center", marginTop: 16, animation: "fadeIn 0.5s ease-out 0.8s both" }}>
               <Pill color="var(--amb)" bg="rgba(245,158,11,0.1)">⚠ YOU HOLD A POISON FRAGMENT</Pill>
             </div>
           )}
 
           <div style={{ marginTop: 28, display: "flex", justifyContent: "center", gap: 16, animation: "fadeIn 0.6s ease-out 0.4s both" }}>
-            {PLAYERS_DATA.slice(1).map((p) => (
-              <div key={p.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            {otherPlayers.map((p) => (
+              <div key={p.socketId} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <Avatar player={p} size={34} muted />
-                <span style={{ fontSize: 10, color: "var(--txt-d)" }}>Reading...</span>
+                <span style={{ fontSize: 10, color: "var(--txt-d)" }}>
+                  {p.readyToTrade ? "Ready" : "Reading..."}
+                </span>
               </div>
             ))}
           </div>
