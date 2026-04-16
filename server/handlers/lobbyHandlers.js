@@ -11,7 +11,7 @@ function registerLobbyHandlers(io, socket) {
     if (!room || room.hostSocketId !== socket.id) return;
     if (room.phase !== "lobby") return;
     room.pack = pack || "Mixed";
-    room.totalRounds = [10, 15, 20].includes(totalRounds) ? totalRounds : 15;
+    room.totalRounds = [3, 10, 15, 20].includes(totalRounds) ? totalRounds : 15;
     io.to(room.code).emit("PACK_SELECTED", { pack: room.pack, totalRounds: room.totalRounds });
   });
 
