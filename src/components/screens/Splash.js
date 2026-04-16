@@ -60,11 +60,11 @@ export default function Splash({ playerName, playerColor, onNameChange, onColorC
           <Btn primary disabled={!ready} onClick={onNext}>Create Game</Btn>
           <div style={{ textAlign: "center" }}>
             <span
-              onClick={ready ? onJoin : undefined}
+              onClick={onJoin}
               style={{
-                fontSize: 14, color: ready ? "var(--txt-m)" : "var(--txt-d)",
-                cursor: ready ? "pointer" : "default",
-                textDecoration: ready ? "underline" : "none",
+                fontSize: 14, color: "var(--txt-m)",
+                cursor: "pointer",
+                textDecoration: "underline",
                 textDecorationColor: "var(--bdr)",
               }}
             >
