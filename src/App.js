@@ -214,6 +214,7 @@ function AppController() {
             players={players}
             onSubmit={handleSubmitAnswer}
             onPass={handlePass}
+            hasStolen={state.hasStolen}
           />
         );
 

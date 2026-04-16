@@ -5,9 +5,9 @@ function startReadTimer(room, onExpire) {
   room.phaseTimer = setTimeout(onExpire, READ_FORCE_ADVANCE_MS);
 }
 
-function startTradeTimer(room, onExpire) {
+function startTradeTimer(room, onExpire, durationMs = TRADE_DURATION_MS) {
   clearPhaseTimer(room);
-  room.phaseTimer = setTimeout(onExpire, TRADE_DURATION_MS);
+  room.phaseTimer = setTimeout(onExpire, durationMs);
 }
 
 function startAnswerTimer(room, onExpire) {

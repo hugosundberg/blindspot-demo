@@ -2,6 +2,7 @@ module.exports = {
   PORT: process.env.PORT || 4001,
   STEAL_DURATION_MS: 15_000,
   TRADE_DURATION_MS: 60_000,
+  RESUME_TRADE_MS:   30_000,  // shorter trade window after a failed steal
   READ_FORCE_ADVANCE_MS: 30_000,   // host's forced-advance if not all players ready
   ANSWER_DURATION_MS: 60_000,
   STARTING_CHIPS: 10,

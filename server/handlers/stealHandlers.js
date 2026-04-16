@@ -1,8 +1,9 @@
 const rm = require("../roomManager");
 const { resolveSteal } = require("../chipLedger");
-const { startStealTimer, clearStealTimer, clearPhaseTimer } = require("../timers");
+const { startStealTimer, startTradeTimer, clearStealTimer, clearPhaseTimer } = require("../timers");
 const { expirePendingOffers } = require("./tradeHandlers");
-const { startAnswerPhase } = require("./readHandlers");
+const { endTradePhase } = require("./readHandlers");
+const { RESUME_TRADE_MS } = require("../config");
 
 function registerStealHandlers(io, socket) {
 
@@ -13,6 +14,13 @@ function registerStealHandlers(io, socket) {
     }
     if (room.stealState) {
       return socket.emit("ROOM_ERROR", { code: "STEAL_ACTIVE", message: "A steal is already in progress." });
+    }
+
+    const stealer = room.players.get(socket.id);
+    if (!stealer) return;
+
+    if (stealer.hasStolen) {
+      return socket.emit("ROOM_ERROR", { code: "ALREADY_STOLEN", message: "You already attempted a steal this round." });
     }
 
     // Prevent stealing after participating in a trade
@@ -29,7 +37,7 @@ function registerStealHandlers(io, socket) {
     clearPhaseTimer(room);
     room.phase = "steal";
 
-    const stealer = room.players.get(socket.id);
+    stealer.hasStolen = true;
     stealer.stats.steals++;
 
     io.to(room.code).emit("STEAL_INITIATED", {
@@ -87,9 +95,33 @@ function resolveStealOutcome(io, room, correct) {
 
     setTimeout(() => advanceAfterSteal(io, room, true), 4000);
   } else {
-    // Round continues; other players still answer
-    setTimeout(() => startAnswerPhase(io, room), 3000);
+    // Round continues — resume trade so others can still trade/steal.
+    // The stealer is locked out (hasStolen=true) and auto-passed for the answer phase.
+    setTimeout(() => resumeTradePhase(io, room), 3000);
   }
+}
+
+function resumeTradePhase(io, room) {
+  const stealerId = room.stealState?.stealerSocketId;
+
+  // Auto-pass the stealer into the answer buffer before clearing steal state
+  if (stealerId && !room.answerBuffer.has(stealerId)) {
+    room.answerBuffer.set(stealerId, { answer: null, submittedAt: Date.now(), fromSteal: true });
+  }
+
+  room.stealState = null;
+  room.phase = "trade";
+  room.endTradeVotes = new Set();
+
+  // Notify clients: stealer is already locked in, then resume trade
+  if (stealerId) {
+    io.to(room.code).emit("ANSWER_RECEIVED", { socketId: stealerId });
+  }
+  const activePlayers = [...room.players.values()].filter(p => !p.hasStolen).length;
+  io.to(room.code).emit("TRADE_VOTE_UPDATE", { votes: 0, total: activePlayers });
+  io.to(room.code).emit("TRADE_PHASE_START", { tradeWindowMs: RESUME_TRADE_MS });
+
+  startTradeTimer(room, () => endTradePhase(io, room), RESUME_TRADE_MS);
 }
 
 function advanceAfterSteal(io, room, stealWon) {

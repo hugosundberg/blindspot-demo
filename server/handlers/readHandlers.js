@@ -35,12 +35,16 @@ function registerReadHandlers(io, socket) {
 
     room.endTradeVotes.add(socket.id);
 
+    // Players who failed a steal are already locked out of answering and don't
+    // count toward the vote threshold — only active (non-stolen) players need to agree.
+    const activePlayers = [...room.players.values()].filter(p => !p.hasStolen).length;
+
     io.to(room.code).emit("TRADE_VOTE_UPDATE", {
       votes: room.endTradeVotes.size,
-      total: room.players.size,
+      total: activePlayers,
     });
 
-    if (room.endTradeVotes.size >= room.players.size) {
+    if (room.endTradeVotes.size >= activePlayers) {
       clearPhaseTimer(room);
       endTradePhase(io, room);
     }
@@ -67,6 +71,7 @@ function startRound(io, room) {
     p.readyToTrade = false;
     p.fragment = null;
     p.isPoison = false;
+    p.hasStolen = false;
   }
 
   // Distribute fragments
@@ -207,4 +212,4 @@ function endGame(io, room) {
   });
 }
 
-module.exports = { registerReadHandlers, startRound, startAnswerPhase, flushAnswers, resolveRound };
+module.exports = { registerReadHandlers, startRound, startTradePhase, endTradePhase, startAnswerPhase, flushAnswers, resolveRound };

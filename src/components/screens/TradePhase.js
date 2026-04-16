@@ -42,6 +42,7 @@ export default function TradePhase({
   // Dismiss offer panel when a steal is triggered
   const stealActive = !!state.stealState;
   const hasTraded   = state.hasTraded;
+  const hasStolen   = state.hasStolen;
 
   const otherPlayers = players.filter(p => p.socketId !== mySocketId);
 
@@ -132,7 +133,7 @@ export default function TradePhase({
         {/* Bottom actions */}
         <div style={{ padding: "8px 24px 28px", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ display: "flex", gap: 10 }}>
-            <Btn danger onClick={onSteal} disabled={stealActive || hasTraded} style={{ flex: 1, animation: (stealActive || hasTraded) ? "none" : "borderGlow 2s ease-in-out infinite", background: "transparent", border: `2px solid ${(stealActive || hasTraded) ? "var(--bdr)" : "var(--red)"}`, color: (stealActive || hasTraded) ? "var(--txt-d)" : "var(--red)" }}>
+            <Btn danger onClick={onSteal} disabled={stealActive || hasTraded || hasStolen} style={{ flex: 1, animation: (stealActive || hasTraded || hasStolen) ? "none" : "borderGlow 2s ease-in-out infinite", background: "transparent", border: `2px solid ${(stealActive || hasTraded || hasStolen) ? "var(--bdr)" : "var(--red)"}`, color: (stealActive || hasTraded || hasStolen) ? "var(--txt-d)" : "var(--red)" }}>
               ⚡ STEAL
             </Btn>
             <Btn

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Phone, ScreenTransition, Hdr, TimerBar, Avatar, Btn } from "../ui";
 
-export default function AnswerPhase({ round, chips, collectedFragments = [], answeredPlayers = [], players = [], onSubmit, onPass }) {
+export default function AnswerPhase({ round, chips, collectedFragments = [], answeredPlayers = [], players = [], onSubmit, onPass, hasStolen = false }) {
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [timer, setTimer] = useState(100);
@@ -33,8 +33,8 @@ export default function AnswerPhase({ round, chips, collectedFragments = [], ans
 
         <div style={{ flex: 1, padding: "20px 24px", display: "flex", flexDirection: "column" }}>
           <div style={{ textAlign: "center", marginBottom: 24, animation: "fadeIn 0.3s" }}>
-            <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--txt-d)", letterSpacing: 2, marginBottom: 6 }}>TRADE WINDOW CLOSED</div>
-            <div style={{ fontSize: 14, color: "var(--txt-m)", fontWeight: 300 }}>Submit your answer or pass</div>
+            <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: hasStolen ? "var(--red)" : "var(--txt-d)", letterSpacing: 2, marginBottom: 6 }}>{hasStolen ? "STEAL ATTEMPTED" : "TRADE WINDOW CLOSED"}</div>
+            <div style={{ fontSize: 14, color: "var(--txt-m)", fontWeight: 300 }}>{hasStolen ? "You cannot submit an answer" : "Submit your answer or pass"}</div>
           </div>
 
           {/* Fragments collected */}
@@ -66,26 +66,37 @@ export default function AnswerPhase({ round, chips, collectedFragments = [], ans
           )}
 
           {/* Answer input */}
-          <div style={{ animation: "fadeUp 0.3s ease-out 0.2s both" }}>
-            <div style={{ background: "var(--s1)", borderRadius: 14, border: `1.5px solid ${submitted ? "var(--grn)" : "var(--bdr)"}`, padding: "4px", transition: "border-color 0.3s" }}>
-              <input
-                type="text" value={answer} onChange={e => setAnswer(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleSubmit()}
-                disabled={submitted}
-                placeholder="Type your answer..."
-                style={{ width: "100%", background: "transparent", border: "none", padding: "14px 16px", fontSize: 18, fontWeight: 500, color: "var(--txt)", outline: "none", letterSpacing: .5 }}
-              />
+          {!hasStolen && (
+            <div style={{ animation: "fadeUp 0.3s ease-out 0.2s both" }}>
+              <div style={{ background: "var(--s1)", borderRadius: 14, border: `1.5px solid ${submitted ? "var(--grn)" : "var(--bdr)"}`, padding: "4px", transition: "border-color 0.3s" }}>
+                <input
+                  type="text" value={answer} onChange={e => setAnswer(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                  disabled={submitted}
+                  placeholder="Type your answer..."
+                  style={{ width: "100%", background: "transparent", border: "none", padding: "14px 16px", fontSize: 18, fontWeight: 500, color: "var(--txt)", outline: "none", letterSpacing: .5 }}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div style={{ flex: 1 }} />
 
           <div style={{ display: "flex", gap: 12, animation: "fadeUp 0.4s ease-out 0.3s both" }}>
-            <Btn disabled={submitted} onClick={handlePass} style={{ flex: 1 }}>Pass</Btn>
-            <Btn primary disabled={!answer.trim() || submitted} onClick={handleSubmit}
-              style={{ flex: 2, background: submitted ? "var(--grn)" : "var(--red)", boxShadow: submitted ? "0 4px 20px var(--grn-g)" : "0 4px 20px var(--red-g)" }}>
-              {submitted ? "✓ Locked In" : "Submit Answer"}
-            </Btn>
+            {hasStolen ? (
+              <div style={{ flex: 1, textAlign: "center", padding: "14px", background: "rgba(220,38,38,0.08)", border: "1px solid var(--red)", borderRadius: 10 }}>
+                <div style={{ fontFamily: "var(--fm)", fontSize: 11, color: "var(--red)", letterSpacing: 2 }}>⚡ STEAL ATTEMPTED</div>
+                <div style={{ fontSize: 12, color: "var(--txt-d)", marginTop: 4 }}>Waiting for others to answer...</div>
+              </div>
+            ) : (
+              <>
+                <Btn disabled={submitted} onClick={handlePass} style={{ flex: 1 }}>Pass</Btn>
+                <Btn primary disabled={!answer.trim() || submitted} onClick={handleSubmit}
+                  style={{ flex: 2, background: submitted ? "var(--grn)" : "var(--red)", boxShadow: submitted ? "0 4px 20px var(--grn-g)" : "0 4px 20px var(--red-g)" }}>
+                  {submitted ? "✓ Locked In" : "Submit Answer"}
+                </Btn>
+              </>
+            )}
           </div>
         </div>
 

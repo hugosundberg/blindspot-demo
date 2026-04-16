@@ -7,6 +7,9 @@ function registerAnswerHandlers(io, socket) {
     const room = rm.getRoomBySocket(socket.id);
     if (!room || room.phase !== "answer") return;
 
+    // Stealer cannot answer after a failed steal
+    if (room.players.get(socket.id)?.hasStolen) return;
+
     // Idempotency: ignore duplicate submissions
     if (room.answerBuffer.has(socket.id)) return;
 
@@ -24,6 +27,10 @@ function registerAnswerHandlers(io, socket) {
   socket.on("PASS", () => {
     const room = rm.getRoomBySocket(socket.id);
     if (!room || room.phase !== "answer") return;
+
+    // Stealer cannot pass after a failed steal (already auto-passed)
+    if (room.players.get(socket.id)?.hasStolen) return;
+
     if (room.answerBuffer.has(socket.id)) return;
 
     room.answerBuffer.set(socket.id, { answer: null, submittedAt: Date.now() });

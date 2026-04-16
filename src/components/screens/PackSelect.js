@@ -3,7 +3,7 @@ import { Phone, ScreenTransition, Btn } from "../ui";
 import { PACKS } from "../../data/constants";
 
 const LENGTHS = [
-  { label: "Short",    value: 10 },
+  { label: "Short",    value: 3 },
   { label: "Standard", value: 15 },
   { label: "Marathon", value: 20 },
 ];

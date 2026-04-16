@@ -37,6 +37,7 @@ const initialState = {
 
   // Steal state
   stealState: null,    // { stealerSocketId, stealerPlayer, durationMs } | null
+  hasStolen: false,    // true if the current player attempted a steal this round
 
   // Answer phase
   answeredPlayers: [], // socketIds that have locked in
@@ -84,6 +85,7 @@ function reducer(state, action) {
         currentRound: action,
         collectedFragments: [{ fragment: action.fragment, isOwn: true, isPoison: action.isPoison }],
         stealState: null,
+        hasStolen: false,
         answeredPlayers: [],
         lastResult: null,
         tradeActivity: [],
@@ -97,7 +99,7 @@ function reducer(state, action) {
       return { ...state, players: action.players };
 
     case "TRADE_PHASE_START":
-      return { ...state, phase: "trade", tradeVotes: { votes: 0, total: 0 } };
+      return { ...state, phase: "trade", stealState: null, tradeVotes: { votes: 0, total: 0 } };
 
     case "TRADE_VOTE_UPDATE":
       return { ...state, tradeVotes: { votes: action.votes, total: action.total } };
@@ -139,7 +141,12 @@ function reducer(state, action) {
       return { ...state, tradeActivity: [...state.tradeActivity, { text: action.text, detail: action.detail, timestamp: action.timestamp }] };
 
     case "STEAL_INITIATED":
-      return { ...state, phase: "steal", stealState: action };
+      return {
+        ...state,
+        phase: "steal",
+        stealState: action,
+        hasStolen: state.hasStolen || action.stealerSocketId === state.mySocketId,
+      };
 
     case "TRADE_PHASE_END":
       return { ...state, phase: "answer" };

@@ -23,6 +23,7 @@ export default function StealSequence({ round, stealState, mySocketId, players =
 
   /* ── Phase progression ── */
   useEffect(() => {
+    if (result) return; // steal already resolved — skip flash/input/countdown/typing progression
     if (isMySteal) {
       const t = setTimeout(() => setPhase("input"), 900);
       return () => clearTimeout(t);
@@ -31,7 +32,7 @@ export default function StealSequence({ round, stealState, mySocketId, players =
       const t2 = setTimeout(() => setPhase("typing"),    2800);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
-  }, [isMySteal]);
+  }, [isMySteal, result]);
 
   /* ── Move to result when server sends STEAL_RESULT ── */
   useEffect(() => {
@@ -143,8 +144,12 @@ export default function StealSequence({ round, stealState, mySocketId, players =
                 <span style={{ fontSize: 32 }}>{correct ? "✓" : "✗"}</span>
               </div>
               <div style={{ fontFamily: "var(--fd)", fontSize: 32, letterSpacing: 4, color: correct ? "var(--grn)" : "var(--red)", marginBottom: 4 }}>{correct ? "CORRECT" : "WRONG"}</div>
-              <div style={{ fontSize: 14, color: "var(--txt-m)", marginBottom: 4 }}>The answer was</div>
-              <div style={{ fontFamily: "var(--fd)", fontSize: 40, letterSpacing: 3, marginBottom: 8 }}>{result.questionAnswer?.toUpperCase()}</div>
+              {(correct || isMySteal) && (
+                <>
+                  <div style={{ fontSize: 14, color: "var(--txt-m)", marginBottom: 4 }}>The answer was</div>
+                  <div style={{ fontFamily: "var(--fd)", fontSize: 40, letterSpacing: 3, marginBottom: 8 }}>{result.questionAnswer?.toUpperCase()}</div>
+                </>
+              )}
               {isMySteal && (
                 <div style={{ fontFamily: "var(--fm)", fontSize: 13, color: "var(--txt-d)", marginBottom: 16 }}>
                   {correct ? "You get +8 chips. Every other player loses 1." : "You lose 5 chips. The round continues for others."}
