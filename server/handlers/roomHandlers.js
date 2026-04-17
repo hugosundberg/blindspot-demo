@@ -2,15 +2,30 @@ const { v4: uuidv4 } = require("uuid");
 const { STARTING_CHIPS, MIN_PLAYERS, MAX_PLAYERS } = require("../config");
 const rm = require("../roomManager");
 
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+const MAX_NAME_LEN = 20;
+
+function sanitizeName(raw) {
+  return String(raw || "")
+    .replace(/[<>&"']/g, "")
+    .trim()
+    .slice(0, MAX_NAME_LEN) || "Player";
+}
+
+function sanitizeColor(raw, fallback) {
+  return HEX_COLOR_RE.test(raw) ? raw : fallback;
+}
+
 function registerRoomHandlers(io, socket) {
 
   socket.on("CREATE_ROOM", ({ name, avatarChar, color }) => {
+    const safeName = sanitizeName(name);
     const player = {
       socketId: socket.id,
       playerId: uuidv4(),
-      name: name || "Player",
-      avatarChar: (avatarChar || name?.[0] || "P").toUpperCase(),
-      color: color || "#DC2626",
+      name: safeName,
+      avatarChar: (avatarChar || safeName[0] || "P").toUpperCase(),
+      color: sanitizeColor(color, "#DC2626"),
       chips: STARTING_CHIPS,
       isHost: true,
       fragment: null,
@@ -37,12 +52,13 @@ function registerRoomHandlers(io, socket) {
     if (room.players.size >= MAX_PLAYERS) {
       return socket.emit("ROOM_ERROR", { code: "ROOM_FULL", message: "Room is full." });
     }
+    const safeName = sanitizeName(name);
     const player = {
       socketId: socket.id,
       playerId: uuidv4(),
-      name: name || "Player",
-      avatarChar: (avatarChar || name?.[0] || "P").toUpperCase(),
-      color: color || "#8B5CF6",
+      name: safeName,
+      avatarChar: (avatarChar || safeName[0] || "P").toUpperCase(),
+      color: sanitizeColor(color, "#8B5CF6"),
       chips: STARTING_CHIPS,
       isHost: false,
       fragment: null,

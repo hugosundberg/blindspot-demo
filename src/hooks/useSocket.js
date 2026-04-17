@@ -15,19 +15,26 @@ function getSocket() {
 export function useSocket() {
   const socket = getSocket();
   const [connected, setConnected] = useState(socket.connected);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!socket.connected) socket.connect();
 
-    const onConnect    = () => setConnected(true);
-    const onDisconnect = () => setConnected(false);
+    const onConnect      = () => { setConnected(true); setError(null); };
+    const onDisconnect   = () => setConnected(false);
+    const onConnectError = (err) => setError(err?.message || "Connection failed");
+    const onError        = (err) => setError(err?.message || "Socket error");
 
-    socket.on("connect",    onConnect);
-    socket.on("disconnect", onDisconnect);
+    socket.on("connect",       onConnect);
+    socket.on("disconnect",    onDisconnect);
+    socket.on("connect_error", onConnectError);
+    socket.on("error",         onError);
 
     return () => {
-      socket.off("connect",    onConnect);
-      socket.off("disconnect", onDisconnect);
+      socket.off("connect",       onConnect);
+      socket.off("disconnect",    onDisconnect);
+      socket.off("connect_error", onConnectError);
+      socket.off("error",         onError);
     };
   }, [socket]);
 
@@ -40,5 +47,5 @@ export function useSocket() {
     return () => socket.off(event, handler);
   }, [socket]);
 
-  return { socket, connected, emit, on };
+  return { socket, connected, error, emit, on };
 }

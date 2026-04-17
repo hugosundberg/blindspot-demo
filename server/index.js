@@ -1,6 +1,6 @@
 const http    = require("http");
 const { Server } = require("socket.io");
-const { PORT }   = require("./config");
+const { PORT, CORS_ORIGIN } = require("./config");
 const { registerRoomHandlers }   = require("./handlers/roomHandlers");
 const { registerLobbyHandlers }  = require("./handlers/lobbyHandlers");
 const { registerReadHandlers }   = require("./handlers/readHandlers");
@@ -15,7 +15,7 @@ const server = http.createServer((req, res) => {
 
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: CORS_ORIGIN,
     methods: ["GET", "POST"],
   },
 });
