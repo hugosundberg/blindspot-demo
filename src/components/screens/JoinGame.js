@@ -20,7 +20,11 @@ export default function JoinGame({ playerName, playerColor, onNameChange, onColo
       <ScreenTransition type="up">
         <div style={{ padding: "20px 24px 12px", display: "flex", alignItems: "center", gap: 12 }}>
           <div
+            role="button"
+            aria-label="Go back"
+            tabIndex={0}
             onClick={onBack}
+            onKeyDown={e => e.key === "Enter" && onBack()}
             style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--s1)", border: "1px solid var(--bdr)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16, color: "var(--txt-m)" }}
           >
             ←
@@ -34,6 +38,7 @@ export default function JoinGame({ playerName, playerColor, onNameChange, onColo
             <div style={{ background: "var(--s1)", borderRadius: 14, border: "1.5px solid var(--bdr)", padding: "4px", marginBottom: 12 }}>
               <input
                 type="text"
+                aria-label="Your display name"
                 maxLength={16}
                 value={playerName}
                 onChange={e => onNameChange(e.target.value)}
@@ -43,9 +48,9 @@ export default function JoinGame({ playerName, playerColor, onNameChange, onColo
             </div>
 
             {/* Colour picker */}
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 20 }}>
+            <div role="radiogroup" aria-label="Choose your colour" style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 20 }}>
               {COLORS.map(c => (
-                <div key={c} onClick={() => onColorChange(c)} style={{ width: 28, height: 28, borderRadius: "50%", background: c, cursor: "pointer", border: playerColor === c ? "2.5px solid white" : "2.5px solid transparent", boxShadow: playerColor === c ? `0 0 10px ${c}` : "none", transition: "all 0.15s" }} />
+                <div key={c} role="radio" aria-label={`Colour ${c}`} aria-checked={playerColor === c} tabIndex={0} onClick={() => onColorChange(c)} onKeyDown={e => e.key === "Enter" && onColorChange(c)} style={{ width: 28, height: 28, borderRadius: "50%", background: c, cursor: "pointer", border: playerColor === c ? "2.5px solid white" : "2.5px solid transparent", boxShadow: playerColor === c ? `0 0 10px ${c}` : "none", transition: "all 0.15s" }} />
               ))}
             </div>
 

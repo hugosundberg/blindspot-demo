@@ -10,3 +10,4 @@ export { default as RoundResult }    from "./RoundResult";
 export { default as StealSequence }  from "./StealSequence";
 export { default as PoisonReveal }   from "./PoisonReveal";
 export { default as Leaderboard }    from "./Leaderboard";
+export { default as PrivacyPolicy }  from "./PrivacyPolicy";

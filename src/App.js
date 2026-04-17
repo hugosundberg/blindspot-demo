@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Splash, JoinGame, Lobby, PackSelect, Countdown,
   ReadPhase, TradePhase, AnswerPhase, RoundResult,
-  StealSequence, Leaderboard,
+  StealSequence, Leaderboard, PrivacyPolicy,
 } from "./components/screens";
 import { GameProvider, useGame } from "./context/GameContext";
 import { useSocket } from "./hooks/useSocket";
@@ -13,13 +13,14 @@ import { useSocket } from "./hooks/useSocket";
 ───────────────────────────────────────────── */
 function AppController() {
   const { state, dispatch } = useGame();
-  const { socket, emit, on } = useSocket();
+  const { socket, connected, emit, on } = useSocket();
 
   // Pre-game identity (name + colour chosen before creating/joining)
-  const [playerName,  setPlayerName]  = useState("");
-  const [playerColor, setPlayerColor] = useState("#DC2626");
-  const [joinFlow,    setJoinFlow]    = useState(false);
-  const [error,       setError]       = useState(null);
+  const [playerName,    setPlayerName]    = useState("");
+  const [playerColor,   setPlayerColor]   = useState("#DC2626");
+  const [joinFlow,      setJoinFlow]      = useState(false);
+  const [privacyFlow,   setPrivacyFlow]   = useState(false);
+  const [error,         setError]         = useState(null);
 
   /* ─── Register all socket → dispatch listeners once ─── */
   useEffect(() => {
@@ -28,6 +29,8 @@ function AppController() {
 
       on("ROOM_CREATED",   (data)   => { dispatch({ type: "ROOM_CREATED",  ...data }); dispatch({ type: "SET_HOST", isHost: true }); }),
       on("JOIN_ACK",       (data)   => { if (data.ok) { dispatch({ type: "JOIN_ACK", ...data }); setJoinFlow(false); } else { setError(data.error); } }),
+      on("REJOIN_ACK",     (data)   => { if (data.ok) { dispatch({ type: "REJOIN_ACK", ...data }); } else { setError(data.error); } }),
+      on("PLAYER_REJOINED",(data)   => dispatch({ type: "PLAYER_JOINED", ...data })),
       on("PLAYER_JOINED",  (data)   => dispatch({ type: "PLAYER_JOINED",  ...data })),
       on("PLAYER_LEFT",    (data)   => dispatch({ type: "PLAYER_LEFT",    ...data })),
       on("PACK_SELECTED",  (data)   => dispatch({ type: "PACK_SELECTED",  ...data })),
@@ -57,6 +60,13 @@ function AppController() {
     ];
     return () => offs.forEach(off => off());
   }, []); // eslint-disable-line
+
+  /* ─── Rejoin room after socket reconnect ─── */
+  useEffect(() => {
+    if (connected && state.roomCode && state.myPlayerId) {
+      emit("REJOIN_ROOM", { roomCode: state.roomCode, playerId: state.myPlayerId });
+    }
+  }, [connected]); // eslint-disable-line
 
   /* ─── Helpers that emit to the server ─── */
   const handleCreateGame = () => {
@@ -106,6 +116,10 @@ function AppController() {
   /* ─── Render the right screen for each phase ─── */
   const renderScreen = () => {
 
+    if (privacyFlow) {
+      return <PrivacyPolicy onBack={() => setPrivacyFlow(false)} />;
+    }
+
     // Pre-game: user hasn't created/joined yet
     if (!roomCode && !joinFlow) {
       return (
@@ -116,6 +130,7 @@ function AppController() {
           onColorChange={setPlayerColor}
           onNext={handleCreateGame}
           onJoin={() => setJoinFlow(true)}
+          onPrivacy={() => setPrivacyFlow(true)}
         />
       );
     }

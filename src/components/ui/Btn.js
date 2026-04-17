@@ -1,4 +1,4 @@
-export default function Btn({ children, primary = false, danger = false, full = true, onClick, disabled = false, glow = false, style: sx = {} }) {
+export default function Btn({ children, primary = false, danger = false, full = true, onClick, disabled = false, glow = false, style: sx = {}, "aria-label": ariaLabel }) {
   const bg  = danger || primary ? "var(--red)" : "var(--s1)";
   const clr = primary || danger  ? "white"      : "var(--txt-m)";
   const shadow = primary || danger ? "0 4px 20px var(--red-g)" : "none";
@@ -6,6 +6,7 @@ export default function Btn({ children, primary = false, danger = false, full = 
     <button
       disabled={disabled}
       onClick={onClick}
+      aria-label={ariaLabel}
       style={{
         width: full ? "100%" : "auto", padding: "14px 20px", borderRadius: 12,
         background: bg, border: primary || danger ? "none" : "1.5px solid var(--bdr)",

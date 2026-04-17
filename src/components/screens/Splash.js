@@ -2,7 +2,7 @@ import { Phone, Btn } from "../ui";
 
 const COLORS = ["#DC2626","#8B5CF6","#0EA5E9","#F59E0B","#10B981","#EC4899","#F97316","#6366F1"];
 
-export default function Splash({ playerName, playerColor, onNameChange, onColorChange, onNext, onJoin }) {
+export default function Splash({ playerName, playerColor, onNameChange, onColorChange, onNext, onJoin, onPrivacy }) {
   const ready = playerName?.trim().length > 0;
 
   return (
@@ -29,6 +29,7 @@ export default function Splash({ playerName, playerColor, onNameChange, onColorC
             <input
               autoFocus
               type="text"
+              aria-label="Your display name"
               maxLength={16}
               value={playerName}
               onChange={e => onNameChange(e.target.value)}
@@ -42,11 +43,16 @@ export default function Splash({ playerName, playerColor, onNameChange, onColorC
           </div>
 
           {/* Colour picker */}
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+          <div role="radiogroup" aria-label="Choose your colour" style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
             {COLORS.map(c => (
               <div
                 key={c}
+                role="radio"
+                aria-label={`Colour ${c}`}
+                aria-checked={playerColor === c}
+                tabIndex={0}
                 onClick={() => onColorChange(c)}
+                onKeyDown={e => e.key === "Enter" && onColorChange(c)}
                 style={{
                   width: 28, height: 28, borderRadius: "50%", background: c, cursor: "pointer",
                   border: playerColor === c ? "2.5px solid white" : "2.5px solid transparent",
@@ -57,7 +63,7 @@ export default function Splash({ playerName, playerColor, onNameChange, onColorC
             ))}
           </div>
 
-          <Btn primary disabled={!ready} onClick={onNext}>Create Game</Btn>
+          <Btn primary disabled={!ready} onClick={onNext} aria-label="Create a new game">Create Game</Btn>
           <div style={{ textAlign: "center" }}>
             <span
               onClick={onJoin}
@@ -73,8 +79,20 @@ export default function Splash({ playerName, playerColor, onNameChange, onColorC
           </div>
         </div>
 
-        <div style={{ position: "absolute", bottom: 32, fontFamily: "var(--fm)", fontSize: 10, color: "var(--txt-d)", letterSpacing: 2 }}>
+        <div style={{ position: "absolute", bottom: 32, fontFamily: "var(--fm)", fontSize: 10, color: "var(--txt-d)", letterSpacing: 2, textAlign: "center" }}>
           3–8 PLAYERS • 30–60 MIN
+          {onPrivacy && (
+            <span
+              role="button"
+              aria-label="Privacy policy"
+              tabIndex={0}
+              onClick={onPrivacy}
+              onKeyDown={e => e.key === "Enter" && onPrivacy()}
+              style={{ display: "block", marginTop: 6, cursor: "pointer", textDecoration: "underline", textDecorationColor: "var(--bdr)" }}
+            >
+              Privacy Policy
+            </span>
+          )}
         </div>
       </div>
     </Phone>

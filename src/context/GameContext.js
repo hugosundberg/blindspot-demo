@@ -59,6 +59,9 @@ function reducer(state, action) {
     case "JOIN_ACK":
       return { ...state, roomCode: action.roomCode, players: action.players };
 
+    case "REJOIN_ACK":
+      return { ...state, roomCode: action.roomCode, players: action.players, phase: action.phase, isHost: action.isHost };
+
     case "PLAYER_JOINED":
       return { ...state, players: [...state.players.filter(p => p.socketId !== action.player.socketId), action.player] };
 

@@ -12,6 +12,13 @@ function getSocket() {
   return sharedSocket;
 }
 
+export function resetSocket() {
+  if (sharedSocket) {
+    sharedSocket.disconnect();
+    sharedSocket = null;
+  }
+}
+
 export function useSocket() {
   const socket = getSocket();
   const [connected, setConnected] = useState(socket.connected);

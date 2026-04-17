@@ -71,6 +71,34 @@ function registerRoomHandlers(io, socket) {
     socket.to(room.code).emit("PLAYER_JOINED", { player: rm.publicPlayer(player) });
   });
 
+  socket.on("REJOIN_ROOM", ({ roomCode, playerId }) => {
+    const room = rm.getRoom(roomCode?.toUpperCase());
+    if (!room) return socket.emit("ROOM_ERROR", { code: "ROOM_NOT_FOUND", message: "Room not found." });
+
+    let oldSocketId = null;
+    let player = null;
+    for (const [sid, p] of room.players) {
+      if (p.playerId === playerId) { oldSocketId = sid; player = p; break; }
+    }
+    if (!player) return socket.emit("ROOM_ERROR", { code: "PLAYER_NOT_FOUND", message: "Could not rejoin — game may have ended." });
+
+    room.players.delete(oldSocketId);
+    player.socketId = socket.id;
+    room.players.set(socket.id, player);
+    if (room.hostSocketId === oldSocketId) room.hostSocketId = socket.id;
+
+    socket.join(room.code);
+    socket.emit("REJOIN_ACK", {
+      ok: true,
+      playerId: player.playerId,
+      roomCode: room.code,
+      players: rm.publicPlayers(room),
+      phase: room.phase,
+      isHost: player.isHost,
+    });
+    socket.to(room.code).emit("PLAYER_REJOINED", { player: rm.publicPlayer(player) });
+  });
+
   socket.on("LEAVE_ROOM", () => {
     handleDisconnect(io, socket);
   });
