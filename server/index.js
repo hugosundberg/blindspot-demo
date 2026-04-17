@@ -1,3 +1,4 @@
+require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const http    = require("http");
 const { Server } = require("socket.io");
 const { PORT, CORS_ORIGIN } = require("./config");
@@ -37,4 +38,5 @@ io.on("connection", (socket) => {
 
 server.listen(PORT, () => {
   console.log(`Blindspot server listening on port ${PORT}`);
+  console.log(`CORS allowed origins: ${CORS_ORIGIN.join(", ")}`);
 });
