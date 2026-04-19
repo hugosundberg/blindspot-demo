@@ -1,0 +1,13 @@
+{
+  "name": "@blindspot/game-engine",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@blindspot/game-constants": "workspace:*"
+  }
+}

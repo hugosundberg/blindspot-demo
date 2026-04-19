@@ -1,0 +1,33 @@
+# Supabase project configuration
+# Run `supabase init` to generate the full file after installing the Supabase CLI.
+# This is a minimal starter — fill in your project_id from the Supabase dashboard.
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://blindspot.vercel.app"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[edge_runtime]
+enabled = true
